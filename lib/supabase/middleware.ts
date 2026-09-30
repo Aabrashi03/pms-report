@@ -7,12 +7,23 @@ export async function updateSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+  const protectedRoute = process.env.NEXT_PUBLIC_TEAM_WORKSPACES_ENABLED === "true"
+    && ["/", "/staff", "/cycles", "/reports", "/team"].includes(request.nextUrl.pathname);
+  function requireLogin(source: NextResponse) {
+    const target = new URL("/login", request.url);
+    target.searchParams.set("next", request.nextUrl.pathname);
+    const redirect = NextResponse.redirect(target);
+    source.cookies.getAll().forEach(cookie => redirect.cookies.set(cookie));
+    redirect.headers.set("Cache-Control", "private, no-store");
+    return redirect;
+  }
+
   // If Supabase isn't configured, skip the auth refresh and pass through.
   // Without this guard createServerClient throws "Your project's URL and Key
   // are required", crashing the edge middleware on every route (500
   // MIDDLEWARE_INVOCATION_FAILED).
   if (!url || !anonKey) {
-    return supabaseResponse;
+    return protectedRoute ? requireLogin(supabaseResponse) : supabaseResponse;
   }
 
   try {
@@ -35,10 +46,12 @@ export async function updateSession(request: NextRequest) {
     });
 
     // Refresh session so it doesn't expire while user is active
-    await supabase.auth.getUser();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (protectedRoute && (error || !user)) return requireLogin(response);
+    if (protectedRoute) response.headers.set("Cache-Control", "private, no-store");
     return response;
   } catch {
     // Never let an auth hiccup crash the entire edge middleware
-    return supabaseResponse;
+    return protectedRoute ? requireLogin(supabaseResponse) : supabaseResponse;
   }
 }

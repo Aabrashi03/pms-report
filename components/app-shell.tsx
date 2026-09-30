@@ -55,7 +55,7 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
       <button className="icon-button navigation-close" aria-label="Close navigation" onClick={() => setOpen(false)}>×</button>
       <div className="brand"><span className="brand-mark">P</span><span><strong>PMS Report</strong><small>People operations</small></span></div>
       <nav aria-label="Main navigation">{nav.map(([href, label, icon]) => <Link href={href} key={href} onClick={() => setOpen(false)} aria-current={pathname === href ? "page" : undefined} className={pathname === href ? "active" : ""}><span aria-hidden>{icon}</span>{label}</Link>)}</nav>
-      <div className="sidebar-note"><span className="live-dot" />{teamsEnabled?'Company workspace':'Demo workspace'}<small>{teamsEnabled ? (access?scope:'Sign in to view your access') : 'Connected to demo appraisal data'}</small></div>
+      <Link href="/login" className="button" onClick={() => setOpen(false)}>Account / Sign in</Link><div className="sidebar-note"><span className="live-dot" />{teamsEnabled?'Company workspace':'Demo workspace'}<small>{teamsEnabled ? (access?scope:'Sign in to view your access') : 'Connected to demo appraisal data'}</small></div>
     </aside>
     {open && <button className="scrim" aria-label="Close navigation" tabIndex={-1} onClick={() => setOpen(false)} />}
     <div className="content-frame" inert={mobile && open}>
