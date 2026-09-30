@@ -16,6 +16,13 @@ export async function getActiveCycleDashboard() {
     const staff = (Array.isArray(item.staff) ? item.staff[0] : item.staff) as StaffRecord;
     return { ...item, staff, derived_status: deriveStatus(item.submission_date, cycle.due_date) } as DashboardRow;
   });
+  const changed = rows.filter((row) => row.status !== row.derived_status);
+  if (changed.length) {
+    await Promise.all(changed.map(async (row) => {
+      await supabase.from("appraisal_submissions").update({ status: row.derived_status }).eq("id", row.id);
+      await writeAudit("status_changed", "appraisal_submission", row.id, { from: row.status, to: row.derived_status });
+    }));
+  }
   return { cycle, rows };
 }
 
@@ -25,6 +32,7 @@ export async function saveSubmission(input: { id?: string; cycleId: string; staf
   const payload = { cycle_id: input.cycleId, staff_id: input.staffId, status, submission_date: input.submissionDate, rating: input.rating, reviewer_name: input.reviewerName, comments: input.comments };
   const { error } = input.id ? await supabase.from("appraisal_submissions").update(payload).eq("id", input.id) : await supabase.from("appraisal_submissions").insert(payload);
   if (error) throw new Error("Could not save. Please retry.");
+  await writeAudit(input.id ? "submission_updated" : "submission_created", "appraisal_submission", input.id, { staff_id: input.staffId, status, submission_date: input.submissionDate, rating: input.rating });
 }
 
 export async function getStaff() {
@@ -48,11 +56,13 @@ export async function saveStaff(input: Omit<StaffRecord, "id"> & { id?: string }
       if (error) throw new Error("Staff was added, but their submission could not be created.");
     }
   }
+  await writeAudit(input.id ? "staff_updated" : "staff_created", "staff", input.id || result.data.id, { employee_id: payload.employee_id, full_name: payload.full_name });
 }
 
 export async function deleteStaff(id: string) {
   const { error } = await createClient().from("staff").delete().eq("id", id);
   if (error) throw new Error(error.message);
+  await writeAudit("staff_deleted", "staff", id);
 }
 
 export type CycleRecord = { id: string; name: string; start_date: string; due_date: string; status: "active" | "closed"; created_at: string };
@@ -71,6 +81,7 @@ export async function createCycle(input: { name: string; startDate: string; dueD
     const { error: submissionError } = await supabase.from("appraisal_submissions").insert(staffRows.map((staff) => ({ cycle_id: cycle.id, staff_id: staff.id, status: deriveStatus(null, input.dueDate) })));
     if (submissionError) throw new Error("Cycle created, but submissions could not be initialized.");
   }
+  await writeAudit("cycle_created", "appraisal_cycle", cycle.id, { name: input.name, start_date: input.startDate, due_date: input.dueDate });
   return cycle.id as string;
 }
 
@@ -80,4 +91,10 @@ export async function activateCycle(id: string) {
   if (closeError) throw new Error(closeError.message);
   const { error } = await supabase.from("appraisal_cycles").update({ status: "active" }).eq("id", id);
   if (error) throw new Error(error.message);
+  await writeAudit("cycle_activated", "appraisal_cycle", id);
+}
+
+export async function writeAudit(action: string, targetType: string, targetId?: string, details: Record<string, unknown> = {}) {
+  const { error } = await createClient().from("audit_log").insert({ action, target_type: targetType, target_id: targetId || null, details });
+  if (error && error.code !== "42P01") console.warn("Audit log write failed", error.message);
 }
