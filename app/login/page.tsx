@@ -20,10 +20,12 @@ export default function LoginPage() {
   const [error,setError]=useState('');
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
+    if(params.get('mode')==='register')setMode('register');
+    if(params.get('mode')==='forgot')setMode('forgot');
     if(params.has('error'))setError('That sign-in link could not be verified. Please sign in again or request a new link.');
     createClient().auth.getUser().then(({data})=>setSignedIn(data.user?.email||'')).catch(()=>setError('Could not check your session. Please try again.')).finally(()=>setChecking(false));
   },[]);
-  function switchMode(value:Mode){setMode(value);setPassword('');setConfirm('');setError('');setMessage('');}
+  function switchMode(value:Mode){setMode(value);setShow(false);setPassword('');setConfirm('');setError('');setMessage('');}
   async function submit(event:React.FormEvent){
     event.preventDefault();setError('');setMessage('');
     if(mode==='register'&&password!==confirm){setError('The passwords do not match.');return;}
@@ -32,7 +34,7 @@ export default function LoginPage() {
       const auth=createClient().auth;
       if(mode==='signin'){
         const result=await auth.signInWithPassword({email:email.trim(),password});
-        if(result.error){setError('Could not sign in. Check your email and password, and confirm that you verified your email.');return;}
+        if(result.error){setError('Could not sign in. If this is your first visit, choose Create an account below. Otherwise check your password and confirm your email.');return;}
         setPassword('');
         const next=new URLSearchParams(window.location.search).get('next');
         window.location.assign(teamsEnabled?safeAuthDestination(next):'/team');
@@ -63,3 +65,4 @@ export default function LoginPage() {
     {error&&<p className="login-error" role="alert">{error}</p>}{message&&<p className="login-message" role="status">{message}</p>}
     <footer>Need access? Contact your company administrator.</footer></div></section></main>;
 }
+
