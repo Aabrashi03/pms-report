@@ -34,3 +34,42 @@ button, a { -webkit-tap-highlight-color:transparent; }
 @media (max-width:800px) { .metric-grid,.card-grid,.report-grid { grid-template-columns:1fr; }.person-card { align-items:flex-start; }.card-actions { flex-direction:column; }.report-hero { align-items:flex-start; flex-direction:column; }.page-toolbar { align-items:flex-start; } }
 .draft-actions { display:flex; gap:10px; margin:-4px 0 18px; }.draft-card { display:grid; grid-template-columns:1fr auto; gap:12px; padding:22px; margin-bottom:18px; background:#fffdf3; border:1px solid #e6dcb2; border-radius:11px; }.draft-card h3 { margin:0; font:700 19px Georgia,serif; }.draft-card textarea { grid-column:1/-1; min-height:145px; padding:13px; color:#39423c; background:#fff; border:1px solid #d8d4bf; border-radius:8px; line-height:1.55; resize:vertical; font-size:12px; }
 @media (max-width:520px) { .draft-actions { align-items:stretch; flex-direction:column; } }
+
+/* Keep the workspace usable with touch, zoom and long staff or cycle names. */
+.content-frame,.page-title,.page-content,.report-grid>* { min-width:0; }
+.page-title { overflow-wrap:anywhere; }
+.avatar,.brand-mark,.user-chip>span { flex-shrink:0; }
+:where(a,button,input,select,textarea):focus-visible { outline:3px solid #88b95d; outline-offset:3px; }
+.skip-link { position:fixed; top:8px; left:8px; z-index:100; padding:12px 18px; background:#fff; color:var(--green); border-radius:8px; transform:translateY(-150%); }
+.skip-link:focus { transform:translateY(0); }
+.navigation-close { display:none; }
+.table-wrap { max-width:100%; overscroll-behavior-x:contain; }
+.person-card>div,.cycle-card>div { min-width:0; overflow-wrap:anywhere; }
+.person-card,.cycle-card,.page-toolbar,.section-heading,.progress-copy { gap:12px; }
+.follow-list>div { gap:12px; }.follow-list span { min-width:0; overflow-wrap:anywhere; }
+@media (max-width:800px) {
+  .sidebar { width:min(300px,calc(100vw - 44px)); padding-top:max(24px,env(safe-area-inset-top)); padding-bottom:max(20px,env(safe-area-inset-bottom)); overflow-y:auto; visibility:hidden; }
+  .sidebar-open { visibility:visible; }
+  .navigation-close { display:block; margin:0 0 14px auto; }
+  .sidebar nav a,.button,.row-action,.icon-button,.menu-button,.card-actions button,.person-button { min-height:44px; }
+  .icon-button,.menu-button { min-width:44px; flex-shrink:0; }
+  .sidebar nav a { font-size:16px; }
+  .topbar { gap:10px; align-items:flex-start; }.topbar h1 { font-size:clamp(23px,5vw,29px); }.topbar p { line-height:1.5; }
+  .page-content { padding-bottom:max(32px,env(safe-area-inset-bottom)); }
+  .form-stack input,.form-stack select,.form-stack textarea,.draft-card textarea { font-size:16px; }
+  .drawer { height:100dvh; padding-bottom:max(24px,env(safe-area-inset-bottom)); }
+  .table-wrap table { min-width:640px; }
+  .text-link { display:inline-flex; align-items:center; min-height:44px; }
+  .department-list>div { grid-template-columns:minmax(0,1fr) minmax(40px,.7fr) 42px; gap:8px; }
+}
+@media (max-width:520px) {
+  .topbar { padding:18px 12px; }.user-chip { display:none; }.page-content { padding-left:12px; padding-right:12px; }
+  .page-toolbar,.cycle-card,.section-heading,.progress-copy { flex-wrap:wrap; }
+  .page-toolbar>.button { width:100%; }.cycle-card { padding:20px; }.cycle-card>.button { width:100%; }
+  .person-card { flex-wrap:wrap; padding:16px; }.card-actions { width:100%; flex-direction:row; justify-content:flex-end; border-top:1px solid var(--line); padding-top:8px; }
+  .card-actions button { padding:8px 12px; }.person-card h3 { overflow-wrap:anywhere; }
+  .report-hero { padding:22px 18px; }.report-hero h2 { font-size:25px; overflow-wrap:anywhere; }.report-hero p { line-height:1.6; }
+  .drawer { width:100%; padding:20px 16px; }.form-actions { flex-wrap:wrap; }.form-actions .button { flex:1; }
+  .draft-card { padding:16px; }.draft-card small { grid-column:1/-1; }.state-card { padding:36px 20px; }
+}
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }

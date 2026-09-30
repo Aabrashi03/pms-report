@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./executive-design.css";
 
 export const metadata: Metadata = {
   title: "PMS Report · Appraisal Operations",
