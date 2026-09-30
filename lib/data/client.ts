@@ -26,3 +26,58 @@ export async function saveSubmission(input: { id?: string; cycleId: string; staf
   const { error } = input.id ? await supabase.from("appraisal_submissions").update(payload).eq("id", input.id) : await supabase.from("appraisal_submissions").insert(payload);
   if (error) throw new Error("Could not save. Please retry.");
 }
+
+export async function getStaff() {
+  const { data, error } = await createClient().from("staff").select("id,employee_id,full_name,department,position").order("full_name");
+  if (error) throw new Error(error.message);
+  return (data || []) as StaffRecord[];
+}
+
+export async function saveStaff(input: Omit<StaffRecord, "id"> & { id?: string }) {
+  const supabase = createClient();
+  const payload = { employee_id: input.employee_id.trim(), full_name: input.full_name.trim(), department: input.department?.trim() || null, position: input.position?.trim() || null };
+  const result = input.id ? await supabase.from("staff").update(payload).eq("id", input.id).select("id").single() : await supabase.from("staff").insert(payload).select("id").single();
+  if (result.error) {
+    if (result.error.code === "23505") throw new Error("Employee ID already exists.");
+    throw new Error(result.error.message);
+  }
+  if (!input.id) {
+    const { data: cycle } = await supabase.from("appraisal_cycles").select("id,due_date").eq("status", "active").limit(1).maybeSingle();
+    if (cycle) {
+      const { error } = await supabase.from("appraisal_submissions").insert({ cycle_id: cycle.id, staff_id: result.data.id, status: deriveStatus(null, cycle.due_date) });
+      if (error) throw new Error("Staff was added, but their submission could not be created.");
+    }
+  }
+}
+
+export async function deleteStaff(id: string) {
+  const { error } = await createClient().from("staff").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export type CycleRecord = { id: string; name: string; start_date: string; due_date: string; status: "active" | "closed"; created_at: string };
+export async function getCycles() {
+  const { data, error } = await createClient().from("appraisal_cycles").select("id,name,start_date,due_date,status,created_at").order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []) as CycleRecord[];
+}
+
+export async function createCycle(input: { name: string; startDate: string; dueDate: string }) {
+  const supabase = createClient();
+  const { data: cycle, error } = await supabase.from("appraisal_cycles").insert({ name: input.name.trim(), start_date: input.startDate, due_date: input.dueDate, status: "closed" }).select("id").single();
+  if (error) throw new Error(error.code === "23505" ? "A cycle with this name already exists." : error.message);
+  const { data: staffRows } = await supabase.from("staff").select("id");
+  if (staffRows?.length) {
+    const { error: submissionError } = await supabase.from("appraisal_submissions").insert(staffRows.map((staff) => ({ cycle_id: cycle.id, staff_id: staff.id, status: deriveStatus(null, input.dueDate) })));
+    if (submissionError) throw new Error("Cycle created, but submissions could not be initialized.");
+  }
+  return cycle.id as string;
+}
+
+export async function activateCycle(id: string) {
+  const supabase = createClient();
+  const { error: closeError } = await supabase.from("appraisal_cycles").update({ status: "closed" }).eq("status", "active");
+  if (closeError) throw new Error(closeError.message);
+  const { error } = await supabase.from("appraisal_cycles").update({ status: "active" }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
