@@ -1,5 +1,10 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  AUTH_REQUEST_TIMEOUT_MS,
+  isProtectedRoute,
+  withTimeout,
+} from "@/lib/auth-middleware";
 
 export async function updateSession(request: NextRequest) {
   const supabaseResponse = NextResponse.next({ request });
@@ -7,8 +12,10 @@ export async function updateSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const protectedRoute = process.env.NEXT_PUBLIC_TEAM_WORKSPACES_ENABLED === "true"
-    && ["/", "/staff", "/cycles", "/reports", "/team"].includes(request.nextUrl.pathname);
+  const protectedRoute = isProtectedRoute(
+    request.nextUrl.pathname,
+    process.env.NEXT_PUBLIC_TEAM_WORKSPACES_ENABLED === "true",
+  );
   function requireLogin(source: NextResponse) {
     const target = new URL("/login", request.url);
     target.searchParams.set("next", request.nextUrl.pathname);
@@ -25,6 +32,11 @@ export async function updateSession(request: NextRequest) {
   if (!url || !anonKey) {
     return protectedRoute ? requireLogin(supabaseResponse) : supabaseResponse;
   }
+
+  // Public routes such as /login must never wait on the remote auth service.
+  // This also keeps the recovery screen available if Supabase is paused or
+  // temporarily unreachable.
+  if (!protectedRoute) return supabaseResponse;
 
   try {
     let response = supabaseResponse;
@@ -46,7 +58,10 @@ export async function updateSession(request: NextRequest) {
     });
 
     // Refresh session so it doesn't expire while user is active
-    const { data: { user }, error } = await supabase.auth.getUser();
+    const { data: { user }, error } = await withTimeout(
+      supabase.auth.getUser(),
+      AUTH_REQUEST_TIMEOUT_MS,
+    );
     if (protectedRoute && (error || !user)) return requireLogin(response);
     if (protectedRoute) response.headers.set("Cache-Control", "private, no-store");
     return response;
