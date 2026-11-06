@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { teamsEnabled } from '@/lib/data/team';
 import { safeAuthDestination } from '@/lib/auth-redirect';
 import './login.css';
+import './microsoft-login.css';
 
 type Mode = 'signin'|'register'|'forgot';
 export default function LoginPage() {
@@ -22,9 +23,23 @@ export default function LoginPage() {
     const params=new URLSearchParams(window.location.search);
     if(params.get('mode')==='register')setMode('register');
     if(params.get('mode')==='forgot')setMode('forgot');
-    if(params.has('error'))setError('That sign-in link could not be verified. Please sign in again or request a new link.');
+    if(params.get('error')==='company-account')setError('Access is limited to SPSB Microsoft accounts ending in @selangorproperties.com.my.');
+    else if(params.has('error'))setError('That sign-in link could not be verified. Please sign in again or request a new link.');
     createClient().auth.getUser().then(({data})=>setSignedIn(data.user?.email||'')).catch(()=>setError('Could not check your session. Please try again.')).finally(()=>setChecking(false));
   },[]);
+  async function signInWithMicrosoft(){
+    setBusy(true);setError('');setMessage('');
+    try {
+      const {error:failure}=await createClient().auth.signInWithOAuth({
+        provider:'azure',
+        options:{scopes:'openid profile email',redirectTo:`${window.location.origin}/auth/callback?next=/`,queryParams:{prompt:'select_account'}},
+      });
+      if(failure)throw failure;
+    } catch {
+      setError('Microsoft sign-in is not available yet. Please contact HR or IT.');
+      setBusy(false);
+    }
+  }
   function switchMode(value:Mode){setMode(value);setShow(false);setPassword('');setConfirm('');setError('');setMessage('');}
   async function submit(event:React.FormEvent){
     event.preventDefault();setError('');setMessage('');
@@ -55,7 +70,8 @@ export default function LoginPage() {
   return <main className="login-screen"><section className="login-story"><Link href="/" className="login-brand"><span>P</span>PMS Executive Suite</Link><div><p className="login-eyebrow">People · Performance · Progress</p><h1>A clear view of<br/>your people.</h1><p>One company workspace for appraisal tracking, department reviews and management reporting.</p></div><small>Company access is assigned by your administrator.</small></section><section className="login-panel"><div className="login-card"><p className="login-eyebrow">Company account</p><h2>{signedIn?'You are signed in':mode==='register'?'Create your account':mode==='forgot'?'Reset your password':'Welcome back'}</h2>
     {!teamsEnabled&&<p className="login-notice">Accounts can be set up now. Private company access is still awaiting activation; the current app remains a public demo.</p>}
     {checking?<p role="status">Checking your session…</p>:signedIn?<><p>Signed in as <strong className="login-email">{signedIn}</strong>.</p><Link className="login-primary" href={teamsEnabled?'/':'/team'}>{teamsEnabled?'Open workspace':'View access status'}</Link><button className="login-text" disabled={busy} onClick={signOut}>Sign out</button></>:<>
-      <p className="login-description">{mode==='signin'?'Sign in using your verified email address.':mode==='register'?'Verify your email, then ask the administrator to assign your company role.':'Enter your account email to request a reset link.'}</p>
+      {mode==='signin'&&<><p className="login-description">Use your SPSB Microsoft 365 account. Only <strong>@selangorproperties.com.my</strong> accounts are accepted.</p><button type="button" className="login-microsoft" disabled={busy} onClick={signInWithMicrosoft}><span aria-hidden>▦</span> Continue with Microsoft</button><div className="login-divider"><span>Administrator recovery</span></div></>}
+      <p className="login-description">{mode==='signin'?'HR may use the recovery fields below only while Microsoft access is being configured.':mode==='register'?'Verify your email, then ask the administrator to assign your company role.':'Enter your account email to request a reset link.'}</p>
       <form onSubmit={submit} className="login-form"><label>Email address<input type="email" required autoComplete="email" value={email} disabled={busy} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></label>
       {mode!=='forgot'&&<><label>Password<span className="login-password"><input type={show?'text':'password'} required minLength={mode==='register'?12:undefined} autoComplete={mode==='register'?'new-password':'current-password'} value={password} disabled={busy} onChange={e=>setPassword(e.target.value)}/><button type="button" aria-label={show?'Hide password':'Show password'} aria-pressed={show} onClick={()=>setShow(!show)}>{show?'Hide':'Show'}</button></span></label>{mode==='register'&&<><small>Use at least 12 characters.</small><label>Confirm password<input type="password" required minLength={12} autoComplete="new-password" value={confirm} disabled={busy} onChange={e=>setConfirm(e.target.value)}/></label></>}</>}
       {mode==='signin'&&<button type="button" className="login-text forgot-link" disabled={busy} onClick={()=>switchMode('forgot')}>Forgot password?</button>}

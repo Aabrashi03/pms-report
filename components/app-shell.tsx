@@ -23,7 +23,7 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
     getCompanyAccess().then(value=>{if(active){setAccess(value);setAccessError('');}}).catch(error=>{if(active){setAccess(null);setAccessError(error.message);}}).finally(()=>{if(active)setChecking(false);});
     return ()=>{active=false;};
   },[pathname]);
-  const scope = access?.role === 'manager' ? `Departments: ${access.departments.join(', ')}` : 'Company-wide';
+  const scope = access?.role === 'employee' ? 'Your PDR only' : access?.role === 'manager' ? 'Your assigned employees' : access?.role === 'hod' ? 'Your endorsement queue' : 'Company-wide';
   const sidebar = useRef<HTMLElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {

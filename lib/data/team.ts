@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 
 export const teamsEnabled = process.env.NEXT_PUBLIC_TEAM_WORKSPACES_ENABLED === "true";
-export type CompanyAccess = { teamId: string; role: 'owner' | 'editor' | 'viewer' | 'manager'; departments: string[] };
+export type CompanyAccess = { teamId: string; role: 'owner' | 'editor' | 'viewer' | 'manager' | 'hod' | 'employee'; departments: string[] };
 export async function getCompanyAccess(): Promise<CompanyAccess | null> {
   if (!teamsEnabled) return null;
   const db = createClient();

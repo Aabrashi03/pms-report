@@ -1,0 +1,36 @@
+.login-microsoft {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 50px;
+  width: 100%;
+  margin: 20px 0 16px;
+  padding: 12px;
+  border: 1px solid #184e38;
+  border-radius: 7px;
+  background: #fff;
+  color: #143c2b;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.login-microsoft span { font-size: 20px; color: #c4912f; }
+.login-microsoft:hover { background: #eef4ef; }
+.login-microsoft:disabled { opacity: .6; cursor: wait; }
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  color: #7b897e;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.login-divider::before, .login-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: #dce4d8;
+}
