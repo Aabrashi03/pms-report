@@ -80,6 +80,8 @@
     #pms-corrected-preview .access-banner { display:flex; gap:12px; align-items:flex-start; padding:12px 14px; margin-bottom:16px; border-left:4px solid var(--p-navy); border-radius:8px; background:var(--p-paper); box-shadow:0 1px 2px #0001; }
     #pms-corrected-preview .access-banner strong { min-width:145px; }
     #pms-corrected-preview .access-banner span { color:var(--p-muted); }
+    #pms-corrected-preview .master-data-note { grid-column:1/-1; display:flex; gap:9px; align-items:flex-start; padding:11px 13px; margin-top:4px; border:1px dashed color-mix(in srgb,var(--p-navy) 28%,var(--p-line)); border-radius:10px; background:color-mix(in srgb,var(--p-navy) 4%,var(--p-paper)); color:var(--p-muted); font-size:11px; line-height:1.45; }
+    #pms-corrected-preview .master-data-note b { color:var(--p-navy); white-space:nowrap; }
     #pms-corrected-preview .print-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; margin-bottom:16px; border:1px solid var(--p-navy); border-radius:10px; background:var(--p-paper); }
     #pms-corrected-preview .print-toolbar strong { display:block; }
     #pms-corrected-preview .print-toolbar span { color:var(--p-muted); font-size:11px; }
@@ -295,6 +297,13 @@
       #pms-corrected-preview .rating-row .score-set:nth-child(3)::before { content:"Reviewer rating"; grid-column:1/-1; margin-bottom:4px; font-size:10px; font-weight:700; color:var(--p-muted); }
       #pms-corrected-preview .rating-table { overflow:visible; }
       #pms-corrected-preview .login-help { align-items:flex-start; flex-direction:column; }
+      #pms-corrected-preview .fields, #pms-corrected-preview .sign-grid, #pms-corrected-preview .metrics { grid-template-columns:1fr !important; }
+      #pms-corrected-preview .field, #pms-corrected-preview .control { min-width:0; }
+      #pms-corrected-preview .field.wide, #pms-corrected-preview .field.full { grid-column:auto; }
+      #pms-corrected-preview .access-banner { display:block; }
+      #pms-corrected-preview .access-banner strong { display:block; margin-bottom:6px; }
+      #pms-corrected-preview .master-data-note { display:block; }
+      #pms-corrected-preview .master-data-note b { display:block; margin-bottom:4px; }
     }
   </style>
 
@@ -362,13 +371,18 @@
           <div class="fields">
             <div class="field wide"><label for="employee-name">Name</label><input class="control employee-input" id="employee-name" placeholder="Employee full name"></div>
             <div class="field"><label for="join-date">Join date</label><input class="control employee-input" id="join-date" type="date"></div>
-            <div class="field"><label for="review-manager">Assigned reviewer</label><input class="control hr-input" id="review-manager" placeholder="Reviewer name" disabled></div>
+            <div class="field"><label for="review-manager">HOD / assigned approver</label><input class="control hr-input" id="review-manager" placeholder="Approver name" disabled></div>
             <div class="field"><label for="review-level">Review route</label><select class="control hr-input" id="review-level" disabled><option>N+1 · Immediate supervisor</option><option>N+2 · Skip-level reviewer</option></select></div>
             <div class="field wide"><label for="position">Position</label><input class="control employee-input" id="position" placeholder="Position title"></div>
             <div class="field"><label for="confirmation-date">Confirmation due date</label><input class="control employee-input" id="confirmation-date" type="date"></div>
             <div class="field"><label for="pdr-date">Date of PDR · accessible to all</label><input class="control all-role-input" id="pdr-date" type="date"></div>
             <div class="field wide"><label for="department">Division / Department</label><input class="control employee-input" id="department" placeholder="Division or department"></div>
             <div class="field"><label for="last-pdr">Last PDR date</label><input class="control employee-input" id="last-pdr" type="date"></div>
+            <div class="field wide"><label for="manager-email">Manager email</label><input class="control hr-input" id="manager-email" type="email" placeholder="manager@selangorproperties.com.my" disabled></div>
+            <div class="field"><label for="head-of-division">Head of Division</label><input class="control hr-input" id="head-of-division" placeholder="Head of Division" disabled></div>
+            <div class="field"><label for="manager-status">Manager</label><select class="control hr-input" id="manager-status" disabled><option>No</option><option>Yes</option></select></div>
+            <div class="field"><label for="confirmation-staff">Confirmation staff</label><select class="control hr-input" id="confirmation-staff" disabled><option>No</option><option>Yes</option></select></div>
+            <div class="master-data-note"><b>HR master data</b><span>Position, department and reporting-line fields will be loaded from the secured employee list after Microsoft sign-in. Employees cannot amend their assigned approver, HOD or Head of Division.</span></div>
           </div>
           <details><summary>Procedure and guidance notes</summary><div class="detail-body">
             <ul>
