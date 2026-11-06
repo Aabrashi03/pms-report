@@ -1,0 +1,112 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { savePdrForm, type DashboardRow, type StaffRecord } from "@/lib/data/client";
+
+type Score = "" | "0" | "1" | "2" | "3" | "4" | "5";
+type RatingRow = { employee: Score; manager: Score; comments: string };
+type KpiRow = { kra: string; kpi: string; action: string; rating?: Score };
+type TrainingRow = { competency: string; type: string; programme: string; priority: string; targetDate: string; expectedResult: string };
+type PdrData = {
+  particulars: { joinDate: string; confirmationDueDate: string; pdrDate: string; lastPdrDate: string; kpiFrom: string; kpiTo: string };
+  sectionA: RatingRow[]; sectionB: RatingRow[]; reflection: KpiRow[]; nextKpis: KpiRow[]; training: TrainingRow[];
+  signatures: { employeeDate: string; managerDate: string; hodDate: string; divisionDate: string };
+  confirmation: { decision: string; remarks: string; evaluatedBy: string; reviewedBy: string; approvedBy: string; evaluatedDate: string; reviewedDate: string; approvedDate: string };
+};
+
+const sectionA = [
+  ["Technical ability", "Consistently demonstrates the professional and technical skills and experience expected for the role."],
+  ["Technical ability", "Reflects on work practices and makes adjustments towards continuous improvement."],
+  ["Technical ability", "Demonstrates a positive attitude to change and flexibility in meeting new and varied work demands."],
+  ["Technical ability", "Understands and complies with standards, policies and procedures relevant to the role."],
+  ["Outcomes and service focus", "Focuses on achieving results in line with business KPIs and client needs."],
+  ["Outcomes and service focus", "Gets the job done on time, cost effectively and consistently."],
+  ["Outcomes and service focus", "Takes accountability for assigned responsibilities and completes tasks on time."],
+  ["Outcomes and service focus", "Prioritises effectively across competing demands."],
+  ["Values people partnerships and teamwork", "Builds positive working relationships and displays empathy, value and respect for others."],
+  ["Values people partnerships and teamwork", "Communicates effectively and adapts style to the purpose and audience."],
+  ["Values people partnerships and teamwork", "Works constructively in a team and contributes positively to team goals and activities."],
+  ["Values people partnerships and teamwork", "Supports colleagues and assists them to manage time and work productively."],
+  ["Willingness to learn and share knowledge", "Shows enthusiasm for learning and sharing knowledge, seeks feedback and supports continuous improvement."],
+  ["Willingness to learn and share knowledge", "Takes ownership of professional development and achievement of training KPIs."],
+  ["Willingness to learn and share knowledge", "Embraces technology and innovation to improve service delivery."],
+  ["Management and leadership — managers only", "Displays strong self-management and reflects on management processes."],
+  ["Management and leadership — managers only", "Demonstrates business planning skills and manages resources effectively."],
+  ["Management and leadership — managers only", "Recognises others' contributions and supports diversity and equal opportunity."],
+  ["Management and leadership — managers only", "Helps others organise workloads and balances team work against expected outcomes."],
+  ["Management and leadership — managers only", "Delegates, empowers and makes decisions effectively."],
+  ["Management and leadership — managers only", "Builds positive relationships within the team and with stakeholders."],
+  ["Management and leadership — managers only", "Applies policies and management processes equitably, transparently and consistently."],
+  ["Management and leadership — managers only", "Uses performance management to review learning requirements."],
+  ["Management and leadership — managers only", "Displays a positive and flexible attitude to change."],
+] as const;
+
+const sectionB = [
+  ["Good attendance and punctuality", "Maintains good attendance, starts work on time and remains accountable for duties."],
+  ["Responsiveness in tasks and responsibilities", "Finds ways to get the job done, responds promptly, follows through and demonstrates reliability."],
+  ["Passionate at work", "Shows persistence, a positive attitude and commitment to meeting or exceeding expectations."],
+  ["Works well with others", "Maintains high morale and avoids conflict, cliques, insults, rumours and conduct that demoralises colleagues."],
+] as const;
+
+const blankRating = (): RatingRow => ({ employee: "", manager: "", comments: "" });
+const blankKpi = (withRating = false): KpiRow => ({ kra: "", kpi: "", action: "", ...(withRating ? { rating: "" as Score } : {}) });
+const blankTraining = (): TrainingRow => ({ competency: "", type: "", programme: "", priority: "", targetDate: "", expectedResult: "" });
+const initialData = (): PdrData => ({
+  particulars: { joinDate: "", confirmationDueDate: "", pdrDate: "", lastPdrDate: "", kpiFrom: "", kpiTo: "" },
+  sectionA: sectionA.map(blankRating), sectionB: sectionB.map(blankRating), reflection: [blankKpi(true),blankKpi(true),blankKpi(true)], nextKpis: [blankKpi(),blankKpi(),blankKpi(),blankKpi()],
+  training: [blankTraining(),blankTraining(),blankTraining()], signatures: { employeeDate: "", managerDate: "", hodDate: "", divisionDate: "" },
+  confirmation: { decision: "", remarks: "", evaluatedBy: "", reviewedBy: "", approvedBy: "", evaluatedDate: "", reviewedDate: "", approvedDate: "" },
+});
+
+function mergeData(source?: Record<string, unknown> | null): PdrData {
+  const base = initialData();
+  if (!source) return base;
+  const value = source as Partial<PdrData>;
+  return { ...base, ...value, particulars: { ...base.particulars, ...value.particulars }, signatures: { ...base.signatures, ...value.signatures }, confirmation: { ...base.confirmation, ...value.confirmation }, sectionA: base.sectionA.map((r,i)=>({...r,...value.sectionA?.[i]})), sectionB: base.sectionB.map((r,i)=>({...r,...value.sectionB?.[i]})), reflection: base.reflection.map((r,i)=>({...r,...value.reflection?.[i]})), nextKpis: base.nextKpis.map((r,i)=>({...r,...value.nextKpis?.[i]})), training: base.training.map((r,i)=>({...r,...value.training?.[i]})) };
+}
+
+function scoreAverage(rows: RatingRow[]) { const values = rows.flatMap(r=>r.manager ? [Number(r.manager)] : []); return values.length ? values.reduce((a,b)=>a+b,0)/values.length : null; }
+
+export function PdrForm({ row, cycleName = "2026 Year-End Performance and Development Review", previewStaff }: { row?: DashboardRow; cycleName?: string; previewStaff?: StaffRecord }) {
+  const staff = row?.staff || previewStaff || { id:"preview",employee_id:"",full_name:"",email:null,department:null,position:null,manager_email:null,hod_name:null,head_of_division:null,is_manager:false,is_confirmation_staff:false };
+  const [data,setData] = useState<PdrData>(()=>mergeData(row?.form_data));
+  const [active,setActive] = useState("particulars"); const [saving,setSaving] = useState(false); const [message,setMessage] = useState("");
+  const averageA = useMemo(()=>scoreAverage(data.sectionA),[data.sectionA]); const averageB = useMemo(()=>scoreAverage(data.sectionB),[data.sectionB]);
+  const tabs = [["particulars","Particulars"],["a","Section A"],["b","Section B"],["c","Section C"],["d","Section D"],["e","Section E & sign-off"]];
+  const updateRating=(section:"sectionA"|"sectionB",index:number,key:keyof RatingRow,value:string)=>setData(old=>({...old,[section]:old[section].map((r,i)=>i===index?{...r,[key]:value}:r)}));
+  const updateKpi=(section:"reflection"|"nextKpis",index:number,key:keyof KpiRow,value:string)=>setData(old=>({...old,[section]:old[section].map((r,i)=>i===index?{...r,[key]:value}:r)}));
+  async function save(stage="employee_draft") { if(!row){setMessage("Preview only. HR must create the 2026 cycle before this form can be saved.");return;} setSaving(true);setMessage("");try{await savePdrForm(row.id,data as unknown as Record<string,unknown>,stage,averageA);setMessage(stage==="manager_review"?"Submitted to the reviewing manager.":"Draft saved.");}catch(e){setMessage(e instanceof Error?e.message:"Could not save.");}finally{setSaving(false);} }
+  return <div className="pdr-document">
+    <div className="pdr-actions no-print"><div><span className="pdr-code">SPB/HR/2026_YE</span><h2>{cycleName}</h2><p>{row?`Workflow: ${(row.workflow_stage||"employee_draft").replaceAll("_"," ")}`:"Full form preview"}</p></div><div><button className="button button-secondary" onClick={()=>window.print()}>Print / Save PDF</button><button className="button" disabled={saving} onClick={()=>save()}>{saving?"Saving…":"Save draft"}</button></div></div>
+    <div className="pdr-tabs no-print" role="tablist">{tabs.map(([id,label])=><button key={id} className={active===id?"active":""} onClick={()=>setActive(id)}>{label}</button>)}</div>
+    {message&&<p className="pdr-message no-print" role="status">{message}</p>}
+    <header className="pdr-print-header"><span>SPB/HR/2026_YE</span><h1>Performance and Development Review Year End</h1></header>
+
+    <section className={`pdr-section ${active!=="particulars"?"tab-hidden":""}`}><h3>Employee particulars</h3><div className="pdr-particulars">
+      <Field label="Name" value={staff.full_name}/><Field label="Join date" type="date" value={data.particulars.joinDate} onChange={v=>setData(d=>({...d,particulars:{...d.particulars,joinDate:v}}))}/>
+      <Field label="Reviewing manager" value={staff.manager_email||""}/><Field label="Date of PDR" type="date" value={data.particulars.pdrDate} onChange={v=>setData(d=>({...d,particulars:{...d.particulars,pdrDate:v}}))}/>
+      <Field label="Position" value={staff.position||""}/><Field label="Confirmation due date" type="date" value={data.particulars.confirmationDueDate} onChange={v=>setData(d=>({...d,particulars:{...d.particulars,confirmationDueDate:v}}))}/>
+      <Field label="Division / Department" value={staff.department||""}/><Field label="Last PDR date" type="date" value={data.particulars.lastPdrDate} onChange={v=>setData(d=>({...d,particulars:{...d.particulars,lastPdrDate:v}}))}/>
+    </div><div className="rating-guide"><h4>Performance rating scale</h4><div>{[["0–1","Unsatisfactory"],["2","Improvement needed"],["3","Competent"],["4","Commendable"],["5","Exceptional performance"]].map(([n,t])=><span key={n}><b>{n}</b>{t}</span>)}</div></div></section>
+
+    <RatingSection id="a" title="Section A Core Competencies" rows={sectionA} values={data.sectionA} active={active} onChange={(i,k,v)=>updateRating("sectionA",i,k,v)} average={averageA}/>
+    <RatingSection id="b" title="Section B Behavioral Appraisal" rows={sectionB} values={data.sectionB} active={active} onChange={(i,k,v)=>updateRating("sectionB",i,k,v)} average={averageB}/>
+
+    <section className={`pdr-section ${active!=="c"?"tab-hidden":""}`}><h3>Section C KRAs and KPIs</h3><p className="pdr-help">Applicable for executive and managerial positions. Reflect on last year’s KPIs and agree the next 12 months’ objectives with the reviewing manager.</p>
+      <h4>Reflection of last year’s KPI</h4><KpiTable rows={data.reflection} rating onChange={(i,k,v)=>updateKpi("reflection",i,k,v)}/>
+      <h4>KRAs and KPIs for next evaluation period</h4><div className="pdr-period"><Field label="From" type="date" value={data.particulars.kpiFrom} onChange={v=>setData(d=>({...d,particulars:{...d.particulars,kpiFrom:v}}))}/><Field label="To" type="date" value={data.particulars.kpiTo} onChange={v=>setData(d=>({...d,particulars:{...d.particulars,kpiTo:v}}))}/></div><KpiTable rows={data.nextKpis} onChange={(i,k,v)=>updateKpi("nextKpis",i,k,v)}/>
+    </section>
+
+    <section className={`pdr-section ${active!=="d"?"tab-hidden":""}`}><h3>Section D Training and Development Needs</h3><p className="pdr-help">Discuss short-term goals, long-term career plans, operational requirements and learning opportunities.</p><div className="pdr-table-wrap"><table className="pdr-table training-table"><thead><tr><th>No.</th><th>Specific competencies</th><th>Type</th><th>Targeted programme and provider</th><th>Priority</th><th>Target date</th><th>Expected result</th></tr></thead><tbody>{data.training.map((r,i)=><tr key={i}><td>{i+1}</td>{(["competency","type","programme","priority","targetDate","expectedResult"] as const).map(k=><td key={k}>{k==="type"?<select value={r[k]} onChange={e=>setData(d=>({...d,training:d.training.map((x,j)=>j===i?{...x,[k]:e.target.value}:x)}))}><option value=""></option><option>L</option><option>SS</option><option>T</option></select>:k==="priority"?<select value={r[k]} onChange={e=>setData(d=>({...d,training:d.training.map((x,j)=>j===i?{...x,[k]:e.target.value}:x)}))}><option value=""></option><option>High</option><option>Medium</option><option>Low</option></select>:<textarea value={r[k]} onChange={e=>setData(d=>({...d,training:d.training.map((x,j)=>j===i?{...x,[k]:e.target.value}:x)}))}/>}</td>)}</tr>)}</tbody></table></div></section>
+
+    <section className={`pdr-section ${active!=="e"?"tab-hidden":""}`}><h3>Sign-off and endorsement</h3><div className="signature-grid">{[["Employee","employeeDate"],["Immediate superior","managerDate"],["Head of Department","hodDate"],["Head of Division","divisionDate"]].map(([label,key])=><label key={key}><b>{label}</b><span>Electronic acknowledgement</span><input type="date" value={data.signatures[key as keyof typeof data.signatures]} onChange={e=>setData(d=>({...d,signatures:{...d.signatures,[key]:e.target.value}}))}/></label>)}</div>
+      {staff.is_confirmation_staff&&<><h3>Section E Staff Confirmation Only</h3><div className="confirmation-choice"><label><input type="radio" name="decision" checked={data.confirmation.decision==="confirm"} onChange={()=>setData(d=>({...d,confirmation:{...d.confirmation,decision:"confirm"}}))}/> Confirm</label><label><input type="radio" name="decision" checked={data.confirmation.decision==="extend"} onChange={()=>setData(d=>({...d,confirmation:{...d.confirmation,decision:"extend"}}))}/> Extend</label></div><label className="pdr-long-field">Remarks<textarea value={data.confirmation.remarks} onChange={e=>setData(d=>({...d,confirmation:{...d.confirmation,remarks:e.target.value}}))}/></label></>}
+      <div className="pdr-final-actions no-print"><button className="button button-secondary" onClick={()=>save()}>Save draft</button><button className="button" onClick={()=>save("manager_review")}>Submit to manager</button></div>
+    </section>
+  </div>;
+}
+
+function Field({label,value,onChange,type="text"}:{label:string;value:string;onChange?:(value:string)=>void;type?:string}) { return <label className="pdr-field"><span>{label}</span><input type={type} value={value} readOnly={!onChange} onChange={e=>onChange?.(e.target.value)}/></label>; }
+function ScoreSelect({value,onChange,label}:{value:Score;onChange:(v:Score)=>void;label:string}) { return <select aria-label={label} value={value} onChange={e=>onChange(e.target.value as Score)}><option value="">—</option>{[0,1,2,3,4,5].map(n=><option key={n}>{n}</option>)}</select>; }
+function RatingSection({id,title,rows,values,active,onChange,average}:{id:string;title:string;rows:readonly (readonly [string,string])[];values:RatingRow[];active:string;onChange:(i:number,k:keyof RatingRow,v:string)=>void;average:number|null}) { return <section className={`pdr-section ${active!==id?"tab-hidden":""}`}><h3>{title}</h3><div className="pdr-table-wrap"><table className="pdr-table rating-table"><thead><tr><th>Competency</th><th>Performance standard</th><th>Employee /5</th><th>Manager /5</th><th>Supporting comments and work examples</th></tr></thead><tbody>{rows.map(([group,text],i)=><tr key={i}><td><b>{group}</b></td><td>{text}</td><td><ScoreSelect label={`Employee score ${i+1}`} value={values[i]?.employee||""} onChange={v=>onChange(i,"employee",v)}/></td><td><ScoreSelect label={`Manager score ${i+1}`} value={values[i]?.manager||""} onChange={v=>onChange(i,"manager",v)}/></td><td><textarea value={values[i]?.comments||""} onChange={e=>onChange(i,"comments",e.target.value)}/></td></tr>)}</tbody><tfoot><tr><th colSpan={3}>Average performance rating</th><th>{average==null?"—":average.toFixed(2)}</th><th></th></tr></tfoot></table></div></section>; }
+function KpiTable({rows,rating=false,onChange}:{rows:KpiRow[];rating?:boolean;onChange:(i:number,k:keyof KpiRow,v:string)=>void}) { return <div className="pdr-table-wrap"><table className="pdr-table kpi-table"><thead><tr><th>Key Result Area KRA</th><th>Key Performance Indicator KPI and measurement</th><th>Action plan</th>{rating&&<th>Rating 1–5</th>}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}><td><textarea value={r.kra} onChange={e=>onChange(i,"kra",e.target.value)}/></td><td><textarea value={r.kpi} onChange={e=>onChange(i,"kpi",e.target.value)}/></td><td><textarea value={r.action} onChange={e=>onChange(i,"action",e.target.value)}/></td>{rating&&<td><ScoreSelect label={`KPI rating ${i+1}`} value={r.rating||""} onChange={v=>onChange(i,"rating",v)}/></td>}</tr>)}</tbody></table></div>; }

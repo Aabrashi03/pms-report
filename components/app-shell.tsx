@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { teamsEnabled, getCompanyAccess, type CompanyAccess } from '@/lib/data/team';
 
 const nav = [
-  ["/", "Dashboard", "▦"], ["/staff", "Staff", "♙"], ["/cycles", "Cycles", "◷"], ["/reports", "Reports", "↗"], ["/team", "Team access", "♙"],
+  ["/", "Dashboard", "▦"], ["/pdr", "PDR form", "▤"], ["/staff", "Staff", "♙"], ["/cycles", "Cycles", "◷"], ["/reports", "Reports", "↗"], ["/team", "Team access", "♙"],
 ] as const;
 
 export function AppShell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
