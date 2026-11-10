@@ -24,3 +24,32 @@
 .employee-focus-card{background:linear-gradient(125deg,#145c3f,#237654);box-shadow:0 6px 22px #145c3f21}
 .employee-next-action{background:#1b6b4b;border-color:#43896c}
 @media(max-width:800px){.mobile-masthead,.mobile-bottom-nav{background:#145c3f}.mobile-bottom-nav{border-top-color:#43896c;box-shadow:0 -5px 22px #145c3f20}.mobile-masthead .menu-button{background:#1b6b4b;border-color:#43896c}.staff-alert{background:#145c3f;border-color:#145c3f}}
+
+/* Light green theme with high-contrast navigation text */
+.sidebar{background:#dcebdd;color:#173f31}
+.brand small,.sidebar-note small{color:#486b57}
+.sidebar nav a{color:#1d4b38}
+.sidebar nav a:hover,.sidebar nav a.active{background:#b8d7be;color:#103d2b}
+.sidebar nav a.active{box-shadow:inset 4px 0 #237654}
+.sidebar-note{border-color:#9fc5a9;background:#e8f3e9}
+.live-dot{background:#39865b;box-shadow:0 0 0 4px #c4dfca}
+.report-hero,.executive-roster{background:#dcebdd;border-color:#b8d7be;color:#173f31}
+.executive-roster{box-shadow:0 4px 14px #47765b1a}
+.executive-roster-top{border-bottom-color:#a9ccb1}
+.gold-eyebrow{color:#5a5520}
+.cycle-chip{background:#c7dec9;border-color:#99bea3;color:#173f31}
+.hero-fraction>span,.executive-roster-main p,.workflow-caption>span:last-child,.workflow-legend{color:#3e6651}
+.completion-ring>span{background:#dcebdd;color:#173f31}
+.completion-ring small{color:#3e6651}
+.workflow-track{background:#a9ccb1}
+.employee-focus-card{background:linear-gradient(125deg,#dcebdd,#c6e0ca);color:#173f31;box-shadow:0 6px 22px #47765b1a}
+.employee-focus-card>div>p:last-child{color:#486b57}
+.employee-next-action{background:#e8f3e9;border-color:#a9ccb1;color:#173f31}
+.employee-next-action>span,.employee-next-action>small{color:#486b57}
+@media(max-width:800px){
+  .mobile-masthead,.mobile-bottom-nav{background:#dcebdd;color:#173f31;border-color:#a9ccb1}
+  .mobile-masthead small,.mobile-bottom-nav a{color:#365d48}
+  .mobile-masthead .menu-button{background:#c7dec9;border-color:#99bea3;color:#173f31}
+  .mobile-masthead .masthead-badge{background:#c7dec9;border-color:#99bea3;color:#173f31}
+  .mobile-bottom-nav a[aria-current=page]{color:#0f573a;font-weight:800}
+}
