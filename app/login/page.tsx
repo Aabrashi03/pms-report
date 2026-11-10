@@ -25,7 +25,24 @@ export default function LoginPage() {
     if(params.get('mode')==='forgot')setMode('forgot');
     if(params.get('error')==='company-account')setError('Access is limited to SPSB Microsoft accounts ending in @selangorproperties.com.my.');
     else if(params.has('error'))setError('That sign-in link could not be verified. Please sign in again or request a new link.');
-    createClient().auth.getUser().then(({data})=>setSignedIn(data.user?.email||'')).catch(()=>setError('Could not check your session. Please try again.')).finally(()=>setChecking(false));
+    const auth=createClient().auth;
+    const finish=async()=>{
+      const hash=new URLSearchParams(window.location.hash.slice(1));
+      const linkType=hash.get('type');
+      const accessToken=hash.get('access_token');
+      const refreshToken=hash.get('refresh_token');
+      if((linkType==='invite'||linkType==='recovery')&&accessToken&&refreshToken){
+        const {error:sessionError}=await auth.setSession({access_token:accessToken,refresh_token:refreshToken});
+        if(sessionError){setError('That account link has expired or could not be verified. Request a new password-reset link.');setChecking(false);return;}
+        window.history.replaceState({},'',`${window.location.pathname}${window.location.search}`);
+        window.location.replace('/reset-password');
+        return;
+      }
+      try { const {data}=await auth.getUser();setSignedIn(data.user?.email||''); }
+      catch { setError('Could not check your session. Please try again.'); }
+      finally { setChecking(false); }
+    };
+    void finish();
   },[]);
   async function signInWithMicrosoft(){
     setBusy(true);setError('');setMessage('');
