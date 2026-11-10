@@ -2,7 +2,7 @@ import { requireTeamId, requireCompanyEditor } from "./team";
 import { createClient } from "@/lib/supabase/client";
 import { deriveStatus, type SubmissionStatus } from "./types";
 
-export type StaffRecord = { id: string; employee_id: string; full_name: string; email: string | null; department: string | null; position: string | null; manager_email: string | null; hod_name: string | null; head_of_division: string | null; is_manager: boolean; is_confirmation_staff: boolean };
+export type StaffRecord = { id: string; employee_id: string; full_name: string; email: string | null; department: string | null; position: string | null; manager_email: string | null; hod_name: string | null; head_of_division: string | null; is_manager: boolean; is_confirmation_staff: boolean; account_invited_at?: string | null; account_activated_at?: string | null };
 export type SubmissionRecord = { id: string; cycle_id: string; staff_id: string; status: SubmissionStatus; submission_date: string | null; rating: string | null; reviewer_name: string | null; comments: string | null; workflow_stage?: string; form_data?: Record<string, unknown> | null };
 export type DashboardRow = SubmissionRecord & { staff: StaffRecord; derived_status: SubmissionStatus };
 
@@ -43,7 +43,7 @@ export async function saveSubmission(input: { id?: string; cycleId: string; staf
 
 export async function getStaff() {
   await requireTeamId();
-  const { data, error } = await createClient().from("staff").select("id,employee_id,full_name,email,department,position,manager_email,hod_name,head_of_division,is_manager,is_confirmation_staff").order("full_name");
+  const { data, error } = await createClient().from("staff").select("id,employee_id,full_name,email,department,position,manager_email,hod_name,head_of_division,is_manager,is_confirmation_staff,account_invited_at,account_activated_at").order("full_name");
   if (error) throw new Error(error.message);
   return (data || []) as StaffRecord[];
 }

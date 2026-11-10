@@ -22,6 +22,9 @@ export async function POST(request: NextRequest) {
   catch { return NextResponse.json({ error: 'A valid staff email is required.' }, { status: 400 }); }
   const email = companyResetEmail((body as { email?: unknown })?.email);
   if (!email) return NextResponse.json({ error: 'Use a valid SPSB email address.' }, { status: 400 });
+  const { data: staff, error: staffError } = await db.from('staff').select('id,account_activated_at').eq('team_id',membership.team_id).ilike('email',email).single();
+  if (staffError || !staff) return NextResponse.json({ error: 'This email is not in the HR staff list.' }, { status: 404 });
+  if (!staff.account_activated_at) return NextResponse.json({ error: 'This employee does not have an active account yet. Send an invitation first.' }, { status: 409 });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
