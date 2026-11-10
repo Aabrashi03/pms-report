@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { savePdrForm, type DashboardRow, type StaffRecord, type WorkflowStage } from "@/lib/data/client";
 import type { CompanyAccess } from "@/lib/data/team";
 import { WorkflowTracker } from "@/components/workflow-tracker";
+import { hasSeparateHod, stageAfterSuperior } from "@/lib/workflow-route";
 
 type Score = "" | "0" | "1" | "2" | "3" | "4" | "5";
 type RatingRow = { employee: Score; manager: Score; comments: string };
@@ -80,6 +81,7 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
   const lastSavedSnapshot=useRef(""); const autoSaveSequence=useRef(0);
   useEffect(()=>{const next=mergeData(row?.form_data);setData(next);lastSavedSnapshot.current=JSON.stringify(next);setLoadedRowId(row?.id||"");setCurrentStage(row?.workflow_stage||"employee_draft");setMessage("");setAutoSaveStatus("");setReturnOpen(false);setReturnReason("");},[row?.id]);
   const averageA = useMemo(()=>scoreAverage(data.sectionA),[data.sectionA]); const averageB = useMemo(()=>scoreAverage(data.sectionB),[data.sectionB]);
+  const separateHod=hasSeparateHod(staff);
   const isHr=accessRole==="owner"||accessRole==="editor";
   const employeeTurn=accessRole==="employee"&&["employee_draft","returned"].includes(currentStage);
   const managerTurn=accessRole==="manager"&&currentStage==="manager_review";
@@ -89,15 +91,15 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
   const canEditManagerScore=isHr||managerTurn;
   const canEditShared=isHr||employeeTurn||managerTurn;
   const canEditDates=isHr||employeeTurn||managerTurn||hodTurn;
-  const accessMessage=isHr?"HR administrator access: all sections can be revised.":employeeTurn?"Employee access: complete your self-assessment, KPIs and development needs.":managerTurn?"Manager access: review the employee's evidence and enter manager ratings.":hodTurn?"HOD access: review the completed assessment and add your endorsement.":"This PDR is read-only at the current workflow stage.";
+  const accessMessage=isHr?"HR administrator access: all sections can be revised.":employeeTurn?"Employee access: complete your self-assessment, KPIs and development needs.":managerTurn?`${separateHod?"Manager":"Assigned superior"} access: review the employee's evidence and enter ratings.`:hodTurn?"HOD access: review the completed assessment and add your endorsement.":"This PDR is read-only at the current workflow stage.";
   const tabs = [["particulars","Particulars"],["a","Section A"],["b","Section B"],["c","Section C"],["d","Section D"],["e","Section E & sign-off"]];
-  const signers = [["Employee","employeeDate",isHr||employeeTurn],["Immediate superior","managerDate",isHr||managerTurn],["Head of Department","hodDate",isHr||hodTurn],["Head of Division","divisionDate",isHr]] as const;
+  const signers = [["Employee","employeeDate",isHr||employeeTurn],[separateHod?"Immediate superior":"Assigned superior","managerDate",isHr||managerTurn],...(separateHod?[["Head of Department","hodDate",isHr||hodTurn] as const]:[]),["Head of Division","divisionDate",isHr]] as const;
   const updateRating=(section:"sectionA"|"sectionB",index:number,key:keyof RatingRow,value:string)=>setData(old=>({...old,[section]:old[section].map((r,i)=>i===index?{...r,[key]:value}:r)}));
   const updateKpi=(section:"reflection"|"nextKpis",index:number,key:keyof KpiRow,value:string)=>setData(old=>({...old,[section]:old[section].map((r,i)=>i===index?{...r,[key]:value}:r)}));
-  const nextAction=getNextAction(accessRole,currentStage);
-  const returnOptions=getReturnOptions(accessRole,currentStage);
+  const nextAction=getNextAction(accessRole,currentStage,staff);
+  const returnOptions=getReturnOptions(accessRole,currentStage,separateHod);
   useEffect(()=>{if(!row||!canEdit||loadedRowId!==row.id)return;const snapshot=JSON.stringify(data);if(snapshot===lastSavedSnapshot.current)return;const sequence=++autoSaveSequence.current;setAutoSaveStatus("Unsaved changes");const timer=window.setTimeout(async()=>{setAutoSaveStatus("Saving draft…");try{await savePdrForm(row.id,data as unknown as Record<string,unknown>,currentStage,averageA,"","auto");lastSavedSnapshot.current=snapshot;if(sequence===autoSaveSequence.current)setAutoSaveStatus(`Saved at ${new Intl.DateTimeFormat("en-MY",{hour:"2-digit",minute:"2-digit"}).format(new Date())}`);}catch{if(sequence===autoSaveSequence.current)setAutoSaveStatus("Auto-save failed — select Save changes");}},1000);return()=>window.clearTimeout(timer);},[data,row,canEdit,loadedRowId,currentStage,averageA]);
-  async function save(stage=currentStage,reason="") { if(!row){setMessage("Preview only. HR must create the 2026 cycle before this form can be saved.");return;} setSaving(true);setMessage("");setAutoSaveStatus("Saving draft…");const changed=stage!==currentStage;const nextData={...data,workflow:reason?{returnReason:reason,returnedAt:new Date().toISOString(),returnedByRole:accessRole||"reviewer"}:changed?{...data.workflow,returnReason:""}:data.workflow};try{const result=await savePdrForm(row.id,nextData as unknown as Record<string,unknown>,stage,averageA,reason);setData(nextData);lastSavedSnapshot.current=JSON.stringify(nextData);setAutoSaveStatus(`Saved at ${new Intl.DateTimeFormat("en-MY",{hour:"2-digit",minute:"2-digit"}).format(new Date())}`);setCurrentStage(stage);setReturnOpen(false);setReturnReason("");const delivery=changed&&result.notificationSent===false?" The workflow was updated, but email delivery is not configured yet.":"";setMessage((stage===currentStage?"Changes saved.":reason?"Returned for correction.":stageMessage(stage))+delivery);}catch(e){setAutoSaveStatus("Save failed");setMessage(e instanceof Error?e.message:"Could not save.");}finally{setSaving(false);} }
+  async function save(stage=currentStage,reason="") { if(!row){setMessage("Preview only. HR must create the 2026 cycle before this form can be saved.");return;} setSaving(true);setMessage("");setAutoSaveStatus("Saving draft…");const changed=stage!==currentStage;const nextData={...data,workflow:reason?{returnReason:reason,returnedAt:new Date().toISOString(),returnedByRole:accessRole||"reviewer"}:changed?{...data.workflow,returnReason:""}:data.workflow};try{const result=await savePdrForm(row.id,nextData as unknown as Record<string,unknown>,stage,averageA,reason);setData(nextData);lastSavedSnapshot.current=JSON.stringify(nextData);setAutoSaveStatus(`Saved at ${new Intl.DateTimeFormat("en-MY",{hour:"2-digit",minute:"2-digit"}).format(new Date())}`);setCurrentStage(stage);setReturnOpen(false);setReturnReason("");const delivery=changed&&result.notificationSent===false?" The workflow was updated, but email delivery is not configured yet.":"";setMessage((stage===currentStage?"Changes saved.":reason?"Returned for correction.":stageMessage(stage,separateHod))+delivery);}catch(e){setAutoSaveStatus("Save failed");setMessage(e instanceof Error?e.message:"Could not save.");}finally{setSaving(false);} }
   return <div className="pdr-document">
     <div className="pdr-actions no-print"><div><span className="pdr-code">SPB/HR/2026_YE</span><h2>{cycleName}</h2><p>{row?`${staff.full_name} · ${staff.department||"Department not set"}`:"Full form preview"}</p></div><div className="pdr-action-controls">{canEdit&&<span className="autosave-status" role="status">{autoSaveStatus||"Auto-save ready"}</span>}<button className="button button-secondary" onClick={()=>window.print()}>Print / Save PDF</button>{canEdit&&<button className="button" disabled={saving} onClick={()=>save()}>{saving?"Saving…":"Save changes"}</button>}</div></div>
     {row&&<WorkflowTracker row={row} stageOverride={currentStage}/>}
@@ -136,27 +138,27 @@ function ScoreSelect({value,onChange,label,disabled=false}:{value:Score;onChange
 function RatingSection({id,title,rows,values,active,onChange,average,canEditEmployee,canEditManager,canEditComments}:{id:string;title:string;rows:readonly (readonly [string,string])[];values:RatingRow[];active:string;onChange:(i:number,k:keyof RatingRow,v:string)=>void;average:number|null;canEditEmployee:boolean;canEditManager:boolean;canEditComments:boolean}) { return <section className={`pdr-section ${active!==id?"tab-hidden":""}`}><h3>{title}</h3><div className="pdr-table-wrap"><table className="pdr-table rating-table"><thead><tr><th>Competency</th><th>Performance standard</th><th>Employee /5</th><th>Manager /5</th><th>Supporting comments and work examples</th></tr></thead><tbody>{rows.map(([group,text],i)=><tr key={i}><td><b>{group}</b></td><td>{text}</td><td><ScoreSelect disabled={!canEditEmployee} label={`Employee score ${i+1}`} value={values[i]?.employee||""} onChange={v=>onChange(i,"employee",v)}/></td><td><ScoreSelect disabled={!canEditManager} label={`Manager score ${i+1}`} value={values[i]?.manager||""} onChange={v=>onChange(i,"manager",v)}/></td><td><textarea disabled={!canEditComments} value={values[i]?.comments||""} onChange={e=>onChange(i,"comments",e.target.value)}/></td></tr>)}</tbody><tfoot><tr><th colSpan={3}>Average performance rating</th><th>{average==null?"—":average.toFixed(2)}</th><th></th></tr></tfoot></table></div></section>; }
 function KpiTable({rows,rating=false,editable,onChange}:{rows:KpiRow[];rating?:boolean;editable:boolean;onChange:(i:number,k:keyof KpiRow,v:string)=>void}) { return <div className="pdr-table-wrap"><table className="pdr-table kpi-table"><thead><tr><th>Key Result Area KRA</th><th>Key Performance Indicator KPI and measurement</th><th>Action plan</th>{rating&&<th>Rating 1–5</th>}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}><td><textarea disabled={!editable} value={r.kra} onChange={e=>onChange(i,"kra",e.target.value)}/></td><td><textarea disabled={!editable} value={r.kpi} onChange={e=>onChange(i,"kpi",e.target.value)}/></td><td><textarea disabled={!editable} value={r.action} onChange={e=>onChange(i,"action",e.target.value)}/></td>{rating&&<td><ScoreSelect disabled={!editable} label={`KPI rating ${i+1}`} value={r.rating||""} onChange={v=>onChange(i,"rating",v)}/></td>}</tr>)}</tbody></table></div>; }
 
-function getNextAction(role: CompanyAccess["role"]|undefined, stage: WorkflowStage) {
-  if (role === "employee" && ["employee_draft","returned"].includes(stage)) return { stage:"manager_review" as const, label:"Submit to manager" };
-  if ((role === "manager" || role === "owner" || role === "editor") && stage === "manager_review") return { stage:"hod_endorsement" as const, label:"Send to HOD" };
+function getNextAction(role: CompanyAccess["role"]|undefined, stage: WorkflowStage, staff:StaffRecord) {
+  if ((role === "employee" || role === "owner" || role === "editor") && ["employee_draft","returned"].includes(stage)) return { stage:"manager_review" as const, label:"Submit to assigned superior" };
+  if ((role === "manager" || role === "owner" || role === "editor") && stage === "manager_review") { const next=stageAfterSuperior(staff); return {stage:next,label:next==="hod_endorsement"?"Send to HOD":"Send to HR"}; }
   if ((role === "hod" || role === "owner" || role === "editor") && stage === "hod_endorsement") return { stage:"hr_review" as const, label:"Endorse and send to HR" };
   if ((role === "owner" || role === "editor") && stage === "hr_review") return { stage:"completed" as const, label:"Complete PDR" };
   return null;
 }
 
-function getReturnOptions(role:CompanyAccess["role"]|undefined,stage:WorkflowStage):{stage:WorkflowStage;label:string}[]{
+function getReturnOptions(role:CompanyAccess["role"]|undefined,stage:WorkflowStage,separateHod:boolean):{stage:WorkflowStage;label:string}[]{
   if(role==="manager"&&stage==="manager_review")return[{stage:"returned",label:"Employee"}];
   if(role==="hod"&&stage==="hod_endorsement")return[{stage:"manager_review",label:"Manager"}];
   if((role==="owner"||role==="editor")&&stage==="manager_review")return[{stage:"returned",label:"Employee"}];
   if((role==="owner"||role==="editor")&&stage==="hod_endorsement")return[{stage:"manager_review",label:"Manager"},{stage:"returned",label:"Employee"}];
-  if((role==="owner"||role==="editor")&&stage==="hr_review")return[{stage:"hod_endorsement",label:"HOD"},{stage:"manager_review",label:"Manager"},{stage:"returned",label:"Employee"}];
+  if((role==="owner"||role==="editor")&&stage==="hr_review")return[...(separateHod?[{stage:"hod_endorsement" as const,label:"HOD"}]:[]),{stage:"manager_review",label:separateHod?"Manager":"Assigned superior"},{stage:"returned",label:"Employee"}];
   return[];
 }
 
-function stageMessage(stage: WorkflowStage) {
-  if (stage === "manager_review") return "Submitted to the reviewing manager.";
+function stageMessage(stage: WorkflowStage,separateHod:boolean) {
+  if (stage === "manager_review") return "Submitted to the assigned superior.";
   if (stage === "hod_endorsement") return "Manager review completed and sent to the HOD.";
-  if (stage === "hr_review") return "HOD endorsement completed and sent to HR.";
+  if (stage === "hr_review") return separateHod?"HOD endorsement completed and sent to HR.":"Superior review completed and sent to HR.";
   if (stage === "completed") return "PDR completed.";
   return "Changes saved.";
 }

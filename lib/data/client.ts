@@ -1,6 +1,7 @@
 import { getCompanyAccess, requireTeamId, requireCompanyEditor } from "./team";
 import { createClient } from "@/lib/supabase/client";
 import { deriveStatus, type SubmissionStatus } from "./types";
+import { hasSeparateHod } from "@/lib/workflow-route";
 
 export type StaffRecord = { id: string; employee_id: string; full_name: string; email: string | null; department: string | null; position: string | null; manager_email: string | null; hod_name: string | null; hod_email?: string | null; head_of_division: string | null; head_of_division_email?: string | null; is_manager: boolean; is_confirmation_staff: boolean; account_invited_at?: string | null; account_activated_at?: string | null };
 export type WorkflowStage = "employee_draft" | "returned" | "manager_review" | "hod_endorsement" | "hr_review" | "completed";
@@ -26,20 +27,23 @@ export async function savePdrForm(id: string, formData: Record<string, unknown>,
   const supabase = createClient();
   await requireTeamId();
   const access = await getCompanyAccess();
-  const { data: existing, error: existingError } = await supabase.from("appraisal_submissions").select("form_data,workflow_stage").eq("id", id).single();
+  const { data: existing, error: existingError } = await supabase.from("appraisal_submissions").select("form_data,workflow_stage,staff!appraisal_submissions_staff_id_fkey!inner(manager_email,hod_email,head_of_division_email)").eq("id", id).single();
   if (existingError || !existing) throw new Error("The PDR form could not be loaded for saving.");
   const currentStage=(existing.workflow_stage||"employee_draft") as WorkflowStage;
   const role=access?.role;
   const isHr=role==="owner"||role==="editor";
-  const permittedStages:Partial<Record<NonNullable<typeof role>,WorkflowStage[]>>={employee:["employee_draft","returned","manager_review"],manager:["returned","manager_review","hod_endorsement"],hod:["manager_review","hod_endorsement","hr_review"],owner:["employee_draft","returned","manager_review","hod_endorsement","hr_review","completed"],editor:["employee_draft","returned","manager_review","hod_endorsement","hr_review","completed"]};
+  const reportingLine=(Array.isArray(existing.staff)?existing.staff[0]:existing.staff) as Pick<StaffRecord,"manager_email"|"hod_email"|"head_of_division_email">;
+  const separateHod=hasSeparateHod(reportingLine);
+  const permittedStages:Partial<Record<NonNullable<typeof role>,WorkflowStage[]>>={employee:["employee_draft","returned","manager_review"],manager:["returned","manager_review","hod_endorsement","hr_review"],hod:["manager_review","hod_endorsement","hr_review"],owner:["employee_draft","returned","manager_review","hod_endorsement","hr_review","completed"],editor:["employee_draft","returned","manager_review","hod_endorsement","hr_review","completed"]};
   if(!role||!permittedStages[role]?.includes(workflowStage)) throw new Error("Your role cannot move this PDR to the selected stage.");
+  if(role==="manager"&&workflowStage==="hr_review"&&separateHod) throw new Error("This PDR must be endorsed by the assigned HOD before HR review.");
   if(!isHr&&((role==="employee"&&!(["employee_draft","returned"] as WorkflowStage[]).includes(currentStage))||(role==="manager"&&currentStage!=="manager_review")||(role==="hod"&&currentStage!=="hod_endorsement"))) throw new Error("This PDR is read-only at the current workflow stage.");
   const safeForm=isHr?formData:restrictPdrChanges(existing.form_data as Record<string,unknown>||{},formData,role);
   const now = new Date();
   const stageTimestamps: Partial<SubmissionRecord> = workflowStage === "manager_review"
     ? { employee_submitted_at: now.toISOString(), submission_date: now.toISOString().slice(0,10) }
-    : workflowStage === "hod_endorsement" ? { manager_submitted_at: now.toISOString() }
-    : workflowStage === "hr_review" ? { hod_endorsed_at: now.toISOString() }
+    : currentStage === "manager_review" && (workflowStage === "hod_endorsement" || workflowStage === "hr_review") ? { manager_submitted_at: now.toISOString() }
+    : currentStage === "hod_endorsement" && workflowStage === "hr_review" ? { hod_endorsed_at: now.toISOString() }
     : workflowStage === "completed" ? { hr_reviewed_at: now.toISOString() }
     : {};
   const payload = { form_data: safeForm, workflow_stage: workflowStage, rating: overallRating == null ? null : overallRating.toFixed(2), updated_at: now.toISOString(), ...stageTimestamps };
