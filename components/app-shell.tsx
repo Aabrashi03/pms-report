@@ -8,8 +8,18 @@ import { createClient } from '@/lib/supabase/client';
 import { canOpenWorkspacePath, visibleWorkspacePaths } from '@/lib/role-navigation';
 
 const nav = [
-  ["/", "Dashboard", "▦"], ["/pdr", "PDR form", "▤"], ["/staff", "Staff", "♙"], ["/cycles", "Cycles", "◷"], ["/reports", "Reports", "↗"], ["/team", "Team access", "♙"],
+  ["/", "Dashboard", "dashboard"], ["/pdr", "PDR form", "form"], ["/staff", "Staff", "staff"], ["/cycles", "PDR cycle", "cycle"], ["/reports", "Reports", "report"], ["/team", "User access", "access"],
 ] as const;
+
+function NavIcon({name}:{name:typeof nav[number][2]}) {
+  const common={viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round" as const,strokeLinejoin:"round" as const,"aria-hidden":true};
+  if(name==="dashboard")return <svg {...common}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
+  if(name==="form")return <svg {...common}><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4M9 11h6M9 15h6"/></svg>;
+  if(name==="staff")return <svg {...common}><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2"/><path d="M3.5 20c.5-4 2.3-6 5.5-6s5 2 5.5 6M14 15c3.5-.5 5.5 1.2 6 4"/></svg>;
+  if(name==="cycle")return <svg {...common}><path d="M20 7V3l-2 2a8 8 0 1 0 2 8"/><path d="M12 7v5l3 2"/></svg>;
+  if(name==="report")return <svg {...common}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>;
+  return <svg {...common}><circle cx="8" cy="8" r="3"/><path d="M3 20c.5-4 2.2-6 5-6 2 0 3.5 1 4.3 3M16 11v8M12 15h8"/></svg>;
+}
 
 export function AppShell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   const pathname = usePathname();
@@ -71,10 +81,11 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
   return <div className="app-frame">
     <a className="skip-link" href="#main-content">Skip to content</a>
     <aside ref={sidebar} id="main-navigation" className={`sidebar ${open ? "sidebar-open" : ""}`} inert={mobile && !open} aria-label="Workspace navigation">
-      <button className="icon-button navigation-close" aria-label="Close navigation" onClick={() => setOpen(false)}>×</button>
+      <button className="icon-button navigation-close" aria-label="Close navigation" onClick={() => setOpen(false)}><span aria-hidden>×</span><span>Close</span></button>
       <div className="brand"><span className="brand-mark brand-logo"><img src="/spb-logo.png" alt="SPB"/></span><span><strong>SPSB PDR</strong><small>Performance review portal</small></span></div>
-      <nav aria-label="Main navigation">{visibleNav.map(([href, label, icon]) => <Link href={href} key={href} onClick={() => setOpen(false)} aria-current={pathname === href ? "page" : undefined} className={pathname === href ? "active" : ""}><span aria-hidden>{icon}</span>{access?.role==='employee'&&href==='/pdr'?'My PDR':label}</Link>)}</nav>
-      {signedIn?<button type="button" className="button" disabled={signingOut} onClick={signOut}>{signingOut?'Signing out…':'Sign out'}</button>:<Link href="/login" className="button" onClick={() => setOpen(false)}>Sign in</Link>}
+      <nav aria-label="Main navigation">{visibleNav.map(([href, label, icon]) => <Link href={href} key={href} onClick={() => setOpen(false)} aria-current={pathname === href ? "page" : undefined} className={pathname === href ? "active" : ""}><span aria-hidden><NavIcon name={icon}/></span>{access?.role==='employee'&&href==='/pdr'?'My PDR':label}</Link>)}</nav>
+      {signedIn&&<div className="sidebar-account"><span>{userInitials||'HR'}</span><div><strong>{userName}</strong><small>{roleLabel}</small></div></div>}
+      {signedIn?<button type="button" className="button sidebar-signout" disabled={signingOut} onClick={signOut}>{signingOut?'Signing out…':'Sign out'}</button>:<Link href="/login" className="button sidebar-signout" onClick={() => setOpen(false)}>Sign in</Link>}
     </aside>
     {open && <button className="scrim" aria-label="Close navigation" tabIndex={-1} onClick={() => setOpen(false)} />}
     <div className="content-frame" inert={mobile && open}>
@@ -84,6 +95,6 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
         {teamsEnabled ? checking ? <div className="state-card">Checking company access…</div> : accessError ? <div className="state-card"><h2>Company access required</h2><p>{accessError}</p><Link className="button" href="/login">Return to sign in</Link></div> : !routeAllowed ? <div className="state-card"><h2>Page not available</h2><p>Your company role does not permit access to this page.</p><Link className="button" href={access?.role==='employee'?'/pdr':'/'}>Open your workspace</Link></div> : <><p className="scope-banner">{scope}{access && ['manager','viewer'].includes(access.role)?' · Read-only access; contact HR for updates.':''}</p>{children}</> : children}
       </main>
     </div>
-    <nav className="mobile-bottom-nav" aria-label="Quick navigation" inert={mobile&&open}>{visibleNav.map(([href,label,icon])=><Link key={href} href={href} aria-current={pathname===href?'page':undefined}><span aria-hidden>{icon}</span>{access?.role==='employee'&&href==='/pdr'?'My PDR':label==='Dashboard'?'Overview':label==='Team access'?'Team':label}</Link>)}</nav>
+    <nav className="mobile-bottom-nav" aria-label="Quick navigation" inert={mobile&&open}>{visibleNav.map(([href,label,icon])=><Link key={href} href={href} aria-current={pathname===href?'page':undefined}><span aria-hidden><NavIcon name={icon}/></span>{access?.role==='employee'&&href==='/pdr'?'My PDR':label==='Dashboard'?'Overview':label==='User access'?'Access':label==='PDR cycle'?'Cycle':label}</Link>)}</nav>
   </div>;
 }
