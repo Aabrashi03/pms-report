@@ -9,3 +9,18 @@
 @media(max-width:800px){.employee-focus-card{grid-template-columns:1fr;padding:22px 18px}.employee-focus-card>.status{justify-self:start}.employee-next-action{grid-column:1;grid-template-columns:1fr;padding:16px}.employee-next-action>.button{grid-column:1;grid-row:auto;margin-top:8px;text-align:center}.employee-help-card{grid-template-columns:1fr;gap:12px}.reviewer-summary{grid-template-columns:1fr}}
 @media(max-width:360px){.mobile-masthead{gap:8px;padding:10px 12px}.mobile-masthead strong{font-size:15px}.hero-fraction{gap:6px}.hero-fraction>small{flex-basis:100%;margin-top:3px}.staff-row-title{align-items:flex-start}.institutional-roster .section-heading h2{font-size:19px}.executive-roster-main{gap:12px}}
 @media print{.mobile-masthead,.mobile-bottom-nav{display:none!important}}
+
+/* SPSB corporate green surfaces */
+.sidebar{background:#145c3f}
+.sidebar nav a:hover,.sidebar nav a.active{background:#237654}
+.brand-mark{background:#1b6b4b;border-color:#43896c}
+.report-hero,.executive-roster{background:#145c3f;border-color:#145c3f}
+.executive-roster{box-shadow:0 4px 14px #145c3f22}
+.executive-roster-top{border-bottom-color:#43896c}
+.cycle-chip{background:#1b6b4b;border-color:#43896c}
+.completion-ring>span{background:#145c3f}
+.workflow-track{background:#43896c}
+.roster-filters button[aria-pressed=true],.roster-footer .button{background:#145c3f;border-color:#145c3f}
+.employee-focus-card{background:linear-gradient(125deg,#145c3f,#237654);box-shadow:0 6px 22px #145c3f21}
+.employee-next-action{background:#1b6b4b;border-color:#43896c}
+@media(max-width:800px){.mobile-masthead,.mobile-bottom-nav{background:#145c3f}.mobile-bottom-nav{border-top-color:#43896c;box-shadow:0 -5px 22px #145c3f20}.mobile-masthead .menu-button{background:#1b6b4b;border-color:#43896c}.staff-alert{background:#145c3f;border-color:#145c3f}}
