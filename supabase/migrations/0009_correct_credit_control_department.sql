@@ -6,4 +6,8 @@ set department = 'Credit Control'
 where lower(email) = 'sharmila@selangorproperties.com.my'
   and department is distinct from 'Credit Control';
 
+update public.staff
+set department = 'CEO Office'
+where department = 'CEO';
+
 commit;
