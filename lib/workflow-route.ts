@@ -36,11 +36,10 @@ export function workflowSteps(staff:ReportingLine,currentStage?:WorkflowStage){
     {key:"employee_draft" as const,label:"Employee"},
     {key:"manager_review" as const,label:firstApproverLabel(staff)},
     ...(includeHod?[{key:"hod_endorsement" as const,label:secondApproverLabel(staff)}]:[]),
-    {key:"hr_review" as const,label:"HR"},
-    {key:"completed" as const,label:"Completed"},
+    {key:"completed" as const,label:"Completed / HR received"},
   ];
 }
 
 export function stageAfterSuperior(staff:ReportingLine):WorkflowStage{
-  return hasSeparateHod(staff)?"hod_endorsement":"hr_review";
+  return hasSeparateHod(staff)?"hod_endorsement":"completed";
 }

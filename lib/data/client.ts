@@ -34,18 +34,17 @@ export async function savePdrForm(id: string, formData: Record<string, unknown>,
   const isHr=role==="owner"||role==="editor";
   const reportingLine=(Array.isArray(existing.staff)?existing.staff[0]:existing.staff) as Pick<StaffRecord,"manager_email"|"hod_email"|"head_of_division_email">;
   const separateHod=hasSeparateHod(reportingLine);
-  const permittedStages:Partial<Record<NonNullable<typeof role>,WorkflowStage[]>>={employee:["employee_draft","returned","manager_review"],manager:["returned","manager_review","hod_endorsement","hr_review"],hod:["manager_review","hod_endorsement","hr_review"],owner:["employee_draft","returned","manager_review","hod_endorsement","hr_review","completed"],editor:["employee_draft","returned","manager_review","hod_endorsement","hr_review","completed"]};
+  const permittedStages:Partial<Record<NonNullable<typeof role>,WorkflowStage[]>>={employee:["employee_draft","returned","manager_review"],manager:["returned","manager_review","hod_endorsement","hr_review","completed"],hod:["manager_review","hod_endorsement","hr_review","completed"],owner:["employee_draft","returned","manager_review","hod_endorsement","hr_review","completed"],editor:["employee_draft","returned","manager_review","hod_endorsement","hr_review","completed"]};
   if(!role||!permittedStages[role]?.includes(workflowStage)) throw new Error("Your role cannot move this PDR to the selected stage.");
-  if(role==="manager"&&workflowStage==="hr_review"&&separateHod) throw new Error("This PDR must be endorsed by the assigned HOD before HR review.");
+  if(role==="manager"&&["hr_review","completed"].includes(workflowStage)&&separateHod) throw new Error("This PDR must be endorsed by the assigned N+2 approver before it is sent to HR.");
   if(!isHr&&((role==="employee"&&!(["employee_draft","returned"] as WorkflowStage[]).includes(currentStage))||(role==="manager"&&currentStage!=="manager_review")||(role==="hod"&&currentStage!=="hod_endorsement"))) throw new Error("This PDR is read-only at the current workflow stage.");
   const safeForm=isHr?formData:restrictPdrChanges(existing.form_data as Record<string,unknown>||{},formData,role);
   const now = new Date();
-  const stageTimestamps: Partial<SubmissionRecord> = workflowStage === "manager_review"
-    ? { employee_submitted_at: now.toISOString(), submission_date: now.toISOString().slice(0,10) }
-    : currentStage === "manager_review" && (workflowStage === "hod_endorsement" || workflowStage === "hr_review") ? { manager_submitted_at: now.toISOString() }
-    : currentStage === "hod_endorsement" && workflowStage === "hr_review" ? { hod_endorsed_at: now.toISOString() }
-    : workflowStage === "completed" ? { hr_reviewed_at: now.toISOString() }
-    : {};
+  const stageTimestamps: Partial<SubmissionRecord> = {};
+  if(workflowStage === "manager_review") Object.assign(stageTimestamps,{ employee_submitted_at: now.toISOString(), submission_date: now.toISOString().slice(0,10) });
+  if(currentStage === "manager_review" && ["hod_endorsement","hr_review","completed"].includes(workflowStage)) stageTimestamps.manager_submitted_at=now.toISOString();
+  if(currentStage === "hod_endorsement" && ["hr_review","completed"].includes(workflowStage)) stageTimestamps.hod_endorsed_at=now.toISOString();
+  if(workflowStage === "completed") stageTimestamps.hr_reviewed_at=now.toISOString();
   const payload = { form_data: safeForm, workflow_stage: workflowStage, rating: overallRating == null ? null : overallRating.toFixed(2), updated_at: now.toISOString(), ...stageTimestamps };
   const { error } = await supabase.from("appraisal_submissions").update(payload).eq("id", id);
   if (error) throw new Error("The PDR form could not be saved. Please retry.");

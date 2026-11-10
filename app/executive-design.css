@@ -80,3 +80,8 @@
 .staff-filters input:focus,
 .staff-filters select:focus{border-color:#d6b84d;box-shadow:0 0 0 3px #fff3c4}
 .access-guidance{border-color:#eadb99;background:#fff9dc;color:#4e471a}
+
+/* Five live workflow stages: HR receipt is the completion point. */
+.workflow-metric-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:1100px){.workflow-metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:800px){.workflow-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

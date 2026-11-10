@@ -93,7 +93,7 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
   const canEditDates=isHr||employeeTurn||managerTurn||hodTurn;
   const accessMessage=isHr?"HR administrator access: all sections can be revised.":employeeTurn?"Employee access: complete your self-assessment, KPIs and development needs.":managerTurn?`${firstApproverLabel(staff)} access: review the employee's evidence and enter ratings.`:hodTurn?`${secondApproverLabel(staff)} access: review the completed assessment and add your endorsement.`:"This PDR is read-only at the current workflow stage.";
   const tabs = [["particulars","Particulars"],["a","Section A"],["b","Section B"],["c","Section C"],["d","Section D"],["e","Section E & sign-off"]];
-  const signers = [["Employee","employeeDate",isHr||employeeTurn],[firstApproverLabel(staff),"managerDate",isHr||managerTurn],...(separateHod?[[secondApproverLabel(staff),"hodDate",isHr||hodTurn] as const]:[]),["HR final review","divisionDate",isHr]] as const;
+  const signers = [["Employee","employeeDate",isHr||employeeTurn],[firstApproverLabel(staff),"managerDate",isHr||managerTurn],...(separateHod?[[secondApproverLabel(staff),"hodDate",isHr||hodTurn] as const]:[]),["HR administration (optional)","divisionDate",isHr]] as const;
   const updateRating=(section:"sectionA"|"sectionB",index:number,key:keyof RatingRow,value:string)=>setData(old=>({...old,[section]:old[section].map((r,i)=>i===index?{...r,[key]:value}:r)}));
   const updateKpi=(section:"reflection"|"nextKpis",index:number,key:keyof KpiRow,value:string)=>setData(old=>({...old,[section]:old[section].map((r,i)=>i===index?{...r,[key]:value}:r)}));
   const nextAction=getNextAction(accessRole,currentStage,staff);
@@ -141,8 +141,8 @@ function KpiTable({rows,rating=false,editable,onChange}:{rows:KpiRow[];rating?:b
 function getNextAction(role: CompanyAccess["role"]|undefined, stage: WorkflowStage, staff:StaffRecord) {
   if ((role === "employee" || role === "owner" || role === "editor") && ["employee_draft","returned"].includes(stage)) return { stage:"manager_review" as const, label:"Submit to assigned superior" };
   if ((role === "manager" || role === "owner" || role === "editor") && stage === "manager_review") { const next=stageAfterSuperior(staff); return {stage:next,label:next==="hod_endorsement"?`Send to ${secondApproverLabel(staff)}`:"Send to HR"}; }
-  if ((role === "hod" || role === "owner" || role === "editor") && stage === "hod_endorsement") return { stage:"hr_review" as const, label:"Approve and send to HR" };
-  if ((role === "owner" || role === "editor") && stage === "hr_review") return { stage:"completed" as const, label:"Complete PDR" };
+  if ((role === "hod" || role === "owner" || role === "editor") && stage === "hod_endorsement") return { stage:"completed" as const, label:"Approve and send to HR" };
+  if ((role === "owner" || role === "editor") && stage === "hr_review") return { stage:"completed" as const, label:"Mark as received by HR" };
   return null;
 }
 
@@ -151,7 +151,7 @@ function getReturnOptions(role:CompanyAccess["role"]|undefined,stage:WorkflowSta
   if(role==="hod"&&stage==="hod_endorsement")return[{stage:"manager_review",label:"Manager"}];
   if((role==="owner"||role==="editor")&&stage==="manager_review")return[{stage:"returned",label:"Employee"}];
   if((role==="owner"||role==="editor")&&stage==="hod_endorsement")return[{stage:"manager_review",label:"Manager"},{stage:"returned",label:"Employee"}];
-  if((role==="owner"||role==="editor")&&stage==="hr_review")return[...(separateHod?[{stage:"hod_endorsement" as const,label:"HOD"}]:[]),{stage:"manager_review",label:separateHod?"Manager":"Assigned superior"},{stage:"returned",label:"Employee"}];
+  if((role==="owner"||role==="editor")&&["hr_review","completed"].includes(stage))return[...(separateHod?[{stage:"hod_endorsement" as const,label:"HOD"}]:[]),{stage:"manager_review",label:separateHod?"Manager":"Assigned superior"},{stage:"returned",label:"Employee"}];
   return[];
 }
 
@@ -159,6 +159,6 @@ function stageMessage(stage: WorkflowStage,separateHod:boolean) {
   if (stage === "manager_review") return "Submitted to the assigned superior.";
   if (stage === "hod_endorsement") return "N+1 review completed and sent to the N+2 approver.";
   if (stage === "hr_review") return separateHod?"N+2 approval completed and sent to HR.":"Superior review completed and sent to HR.";
-  if (stage === "completed") return "PDR completed.";
+  if (stage === "completed") return "PDR completed and received by HR.";
   return "Changes saved.";
 }

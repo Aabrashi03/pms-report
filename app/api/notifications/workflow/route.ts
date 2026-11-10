@@ -34,7 +34,7 @@ export async function POST(request:NextRequest){
 }
 
 function notificationRecipients(stage:WorkflowStage,staff:{email:string|null;manager_email:string|null;hod_email:string|null;head_of_division_email:string|null},hr:string){
-  const values=stage==="returned"?[staff.email]:stage==="manager_review"?[staff.manager_email]:stage==="hod_endorsement"?[secondApproverEmail(staff)]:stage==="hr_review"?hr.split(","):stage==="completed"?[staff.email,staff.manager_email]:[];
+  const values=stage==="returned"?[staff.email]:stage==="manager_review"?[staff.manager_email]:stage==="hod_endorsement"?[secondApproverEmail(staff)]:stage==="hr_review"?hr.split(","):stage==="completed"?[...hr.split(","),staff.email,staff.manager_email]:[];
   return Array.from(new Set(values.map(value=>value?.trim().toLowerCase()).filter((value):value is string=>!!value&&value.endsWith("@selangorproperties.com.my"))));
 }
 
@@ -43,6 +43,6 @@ function stageAction(stage:WorkflowStage){
   if(stage==="manager_review")return "Manager review required";
   if(stage==="hod_endorsement")return "HOD endorsement required";
   if(stage==="hr_review")return "HR final review required";
-  if(stage==="completed")return "PDR completed";
+  if(stage==="completed")return "PDR completed and received by HR";
   return "Employee action required";
 }

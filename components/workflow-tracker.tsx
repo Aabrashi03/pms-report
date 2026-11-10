@@ -13,18 +13,21 @@ const dates:Partial<Record<WorkflowStage,keyof DashboardRow>>={employee_draft:"e
 
 export function workflowPosition(stage?: string) {
   if (stage === "returned") return 0;
+  if (stage === "hr_review") return defaultStages.findIndex(item => item.key === "completed");
   const index = defaultStages.findIndex(item => item.key === stage);
   return index < 0 ? 0 : index;
 }
 
 export function workflowLabel(stage?: string,staff?:StaffRecord) {
   if (stage === "returned") return "Returned to employee";
+  if (stage === "hr_review") return "Completed / HR received";
   if(staff&&stage==="manager_review")return workflowSteps(staff,stage).find(item=>item.key===stage)?.label||"Assigned superior";
   return defaultStages.find(item => item.key === stage)?.label || "Employee";
 }
 
 export function WorkflowTracker({ row, stageOverride, compact = false }: { row: DashboardRow; stageOverride?: WorkflowStage; compact?: boolean }) {
-  const currentStage = stageOverride || row.workflow_stage || "employee_draft";
+  const rawStage = stageOverride || row.workflow_stage || "employee_draft";
+  const currentStage:WorkflowStage = rawStage === "hr_review" ? "completed" : rawStage;
   const stages=workflowSteps(row.staff,currentStage);
   const current=currentStage==="returned"?0:Math.max(0,stages.findIndex(item=>item.key===currentStage));
   const currentLabel=currentStage==="returned"?"Returned to employee":stages.find(item=>item.key===currentStage)?.label||"Employee";
