@@ -10,4 +10,12 @@ update public.staff
 set department = 'CEO Office'
 where department = 'CEO';
 
+update public.staff
+set department = 'Human Resource & Administration'
+where department = 'HR';
+
+update public.staff
+set department = 'Information Technology'
+where department = 'IT';
+
 commit;
