@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { secondApproverEmail } from "@/lib/workflow-route";
 
 type WorkflowStage="employee_draft"|"returned"|"manager_review"|"hod_endorsement"|"hr_review"|"completed";
 const validStages=new Set<WorkflowStage>(["employee_draft","returned","manager_review","hod_endorsement","hr_review","completed"]);
@@ -33,7 +34,7 @@ export async function POST(request:NextRequest){
 }
 
 function notificationRecipients(stage:WorkflowStage,staff:{email:string|null;manager_email:string|null;hod_email:string|null;head_of_division_email:string|null},hr:string){
-  const values=stage==="returned"?[staff.email]:stage==="manager_review"?[staff.manager_email]:stage==="hod_endorsement"?[staff.hod_email||staff.head_of_division_email]:stage==="hr_review"?hr.split(","):stage==="completed"?[staff.email,staff.manager_email]:[];
+  const values=stage==="returned"?[staff.email]:stage==="manager_review"?[staff.manager_email]:stage==="hod_endorsement"?[secondApproverEmail(staff)]:stage==="hr_review"?hr.split(","):stage==="completed"?[staff.email,staff.manager_email]:[];
   return Array.from(new Set(values.map(value=>value?.trim().toLowerCase()).filter((value):value is string=>!!value&&value.endsWith("@selangorproperties.com.my"))));
 }
 
