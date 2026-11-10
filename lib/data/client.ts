@@ -1,4 +1,4 @@
-import { requireTeamId, requireCompanyEditor } from "./team";
+import { getCompanyAccess, requireTeamId, requireCompanyEditor } from "./team";
 import { createClient } from "@/lib/supabase/client";
 import { deriveStatus, type SubmissionStatus } from "./types";
 
@@ -25,6 +25,16 @@ export async function getActiveCycleDashboard() {
 export async function savePdrForm(id: string, formData: Record<string, unknown>, workflowStage: WorkflowStage = "employee_draft", overallRating?: number | null) {
   const supabase = createClient();
   await requireTeamId();
+  const access = await getCompanyAccess();
+  const { data: existing, error: existingError } = await supabase.from("appraisal_submissions").select("form_data,workflow_stage").eq("id", id).single();
+  if (existingError || !existing) throw new Error("The PDR form could not be loaded for saving.");
+  const currentStage=(existing.workflow_stage||"employee_draft") as WorkflowStage;
+  const role=access?.role;
+  const isHr=role==="owner"||role==="editor";
+  const permittedStages:Partial<Record<NonNullable<typeof role>,WorkflowStage[]>>={employee:["employee_draft","returned","manager_review"],manager:["manager_review","hod_endorsement"],hod:["hod_endorsement","hr_review"],owner:["employee_draft","returned","manager_review","hod_endorsement","hr_review","completed"],editor:["employee_draft","returned","manager_review","hod_endorsement","hr_review","completed"]};
+  if(!role||!permittedStages[role]?.includes(workflowStage)) throw new Error("Your role cannot move this PDR to the selected stage.");
+  if(!isHr&&((role==="employee"&&!(["employee_draft","returned"] as WorkflowStage[]).includes(currentStage))||(role==="manager"&&currentStage!=="manager_review")||(role==="hod"&&currentStage!=="hod_endorsement"))) throw new Error("This PDR is read-only at the current workflow stage.");
+  const safeForm=isHr?formData:restrictPdrChanges(existing.form_data as Record<string,unknown>||{},formData,role);
   const now = new Date();
   const stageTimestamps: Partial<SubmissionRecord> = workflowStage === "manager_review"
     ? { employee_submitted_at: now.toISOString(), submission_date: now.toISOString().slice(0,10) }
@@ -32,10 +42,24 @@ export async function savePdrForm(id: string, formData: Record<string, unknown>,
     : workflowStage === "hr_review" ? { hod_endorsed_at: now.toISOString() }
     : workflowStage === "completed" ? { hr_reviewed_at: now.toISOString() }
     : {};
-  const payload = { form_data: formData, workflow_stage: workflowStage, rating: overallRating == null ? null : overallRating.toFixed(2), updated_at: now.toISOString(), ...stageTimestamps };
+  const payload = { form_data: safeForm, workflow_stage: workflowStage, rating: overallRating == null ? null : overallRating.toFixed(2), updated_at: now.toISOString(), ...stageTimestamps };
   const { error } = await supabase.from("appraisal_submissions").update(payload).eq("id", id);
   if (error) throw new Error("The PDR form could not be saved. Please retry.");
   await writeAudit("pdr_form_saved", "appraisal_submission", id, { workflow_stage: workflowStage });
+}
+
+function restrictPdrChanges(current:Record<string,unknown>,incoming:Record<string,unknown>,role:"employee"|"manager"|"hod"|"viewer"){
+  if(role==="viewer") return current;
+  const object=(value:unknown):Record<string,unknown>=>value&&typeof value==="object"&&!Array.isArray(value)?value as Record<string,unknown>:{};
+  const basePart=object(current.particulars),nextPart=object(incoming.particulars),baseSign=object(current.signatures),nextSign=object(incoming.signatures);
+  const dateKeys=["pdrDate","kpiFrom","kpiTo"];
+  const particulars={...basePart,...Object.fromEntries(dateKeys.map(key=>[key,nextPart[key]??basePart[key]]))};
+  if(role==="hod") return {...current,particulars,signatures:{...baseSign,hodDate:nextSign.hodDate??baseSign.hodDate}};
+  const mergeRatings=(baseValue:unknown,nextValue:unknown)=>{
+    const base=Array.isArray(baseValue)?baseValue:[],next=Array.isArray(nextValue)?nextValue:[];
+    return base.map((item,index)=>{const oldRow=object(item),newRow=object(next[index]);return role==="employee"?{...oldRow,employee:newRow.employee??oldRow.employee,comments:newRow.comments??oldRow.comments}:{...oldRow,manager:newRow.manager??oldRow.manager,comments:newRow.comments??oldRow.comments};});
+  };
+  return {...current,particulars,sectionA:mergeRatings(current.sectionA,incoming.sectionA),sectionB:mergeRatings(current.sectionB,incoming.sectionB),reflection:incoming.reflection??current.reflection,nextKpis:incoming.nextKpis??current.nextKpis,training:incoming.training??current.training,signatures:{...baseSign,[role==="employee"?"employeeDate":"managerDate"]:nextSign[role==="employee"?"employeeDate":"managerDate"]??baseSign[role==="employee"?"employeeDate":"managerDate"]}};
 }
 
 export async function saveSubmission(input: { id?: string; cycleId: string; staffId: string; dueDate: string; submissionDate: string | null; rating: string | null; reviewerName: string | null; comments: string | null }) {
