@@ -9,9 +9,9 @@ import { getCompanyAccess, type CompanyAccess } from "@/lib/data/team";
 const previewStaff: StaffRecord = { id:"preview", employee_id:"", full_name:"Employee name", email:null, position:"Position", department:"Division / Department", manager_email:"reviewing.manager@selangorproperties.com.my", hod_name:"Head of Department", head_of_division:"Head of Division", is_manager:false, is_confirmation_staff:true };
 
 export default function PdrPage() {
-  const [requested]=useState(()=>typeof window==="undefined"?null:new URLSearchParams(window.location.search).get("submission"));
+  const [requested,setRequested]=useState<string|null>(null);
   const [rows,setRows]=useState<DashboardRow[]>([]); const [cycle,setCycle]=useState("2026 Year-End Performance and Development Review"); const [access,setAccess]=useState<CompanyAccess|null>(null); const [loading,setLoading]=useState(true); const [error,setError]=useState("");
-  useEffect(()=>{Promise.all([getActiveCycleDashboard(),getCompanyAccess()]).then(([result,companyAccess])=>{setRows(result.rows);setAccess(companyAccess);if(result.cycle?.name&&result.rows.length)setCycle(result.cycle.name);}).catch(e=>setError(e instanceof Error?e.message:"Could not load the PDR form.")).finally(()=>setLoading(false));},[]);
+  useEffect(()=>{setRequested(new URLSearchParams(window.location.search).get("submission"));Promise.all([getActiveCycleDashboard(),getCompanyAccess()]).then(([result,companyAccess])=>{setRows(result.rows);setAccess(companyAccess);if(result.cycle?.name&&result.rows.length)setCycle(result.cycle.name);}).catch(e=>setError(e instanceof Error?e.message:"Could not load the PDR form.")).finally(()=>setLoading(false));},[]);
   const selected=(requested?rows.find(row=>row.id===requested):undefined)||rows[0];
   return <AppShell title="Performance and Development Review" subtitle="SPSB year-end appraisal form">
     {loading?<div className="state-card" role="status">Loading PDR form…</div>:<>
