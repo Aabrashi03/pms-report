@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/client";
 import { deriveStatus, type SubmissionStatus } from "./types";
 
 export type StaffRecord = { id: string; employee_id: string; full_name: string; email: string | null; department: string | null; position: string | null; manager_email: string | null; hod_name: string | null; head_of_division: string | null; is_manager: boolean; is_confirmation_staff: boolean; account_invited_at?: string | null; account_activated_at?: string | null };
-export type SubmissionRecord = { id: string; cycle_id: string; staff_id: string; status: SubmissionStatus; submission_date: string | null; rating: string | null; reviewer_name: string | null; comments: string | null; workflow_stage?: string; form_data?: Record<string, unknown> | null };
+export type WorkflowStage = "employee_draft" | "returned" | "manager_review" | "hod_endorsement" | "hr_review" | "completed";
+export type SubmissionRecord = { id: string; cycle_id: string; staff_id: string; status: SubmissionStatus; submission_date: string | null; rating: string | null; reviewer_name: string | null; comments: string | null; workflow_stage?: WorkflowStage; employee_submitted_at?: string | null; manager_submitted_at?: string | null; hod_endorsed_at?: string | null; hr_reviewed_at?: string | null; form_data?: Record<string, unknown> | null };
 export type DashboardRow = SubmissionRecord & { staff: StaffRecord; derived_status: SubmissionStatus };
 
 export async function getActiveCycleDashboard() {
@@ -12,7 +13,7 @@ export async function getActiveCycleDashboard() {
   const { data: cycle, error: cycleError } = await supabase.from("appraisal_cycles").select("id,name,due_date").eq("status", "active").order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (cycleError) throw new Error(cycleError.message);
   if (!cycle) return { cycle: null, rows: [] as DashboardRow[] };
-  const { data, error } = await supabase.from("appraisal_submissions").select("id,cycle_id,staff_id,status,submission_date,rating,reviewer_name,comments,workflow_stage,form_data,staff!appraisal_submissions_staff_id_fkey!inner(id,employee_id,full_name,email,department,position,manager_email,hod_name,head_of_division,is_manager,is_confirmation_staff)").eq("cycle_id", cycle.id);
+  const { data, error } = await supabase.from("appraisal_submissions").select("id,cycle_id,staff_id,status,submission_date,rating,reviewer_name,comments,workflow_stage,employee_submitted_at,manager_submitted_at,hod_endorsed_at,hr_reviewed_at,form_data,staff!appraisal_submissions_staff_id_fkey!inner(id,employee_id,full_name,email,department,position,manager_email,hod_name,head_of_division,is_manager,is_confirmation_staff)").eq("cycle_id", cycle.id);
   if (error) throw new Error(error.message);
   const rows = (data || []).map((item) => {
     const staff = (Array.isArray(item.staff) ? item.staff[0] : item.staff) as StaffRecord;
@@ -21,10 +22,17 @@ export async function getActiveCycleDashboard() {
   return { cycle, rows };
 }
 
-export async function savePdrForm(id: string, formData: Record<string, unknown>, workflowStage = "employee_draft", overallRating?: number | null) {
+export async function savePdrForm(id: string, formData: Record<string, unknown>, workflowStage: WorkflowStage = "employee_draft", overallRating?: number | null) {
   const supabase = createClient();
   await requireTeamId();
-  const payload = { form_data: formData, workflow_stage: workflowStage, rating: overallRating == null ? null : overallRating.toFixed(2), updated_at: new Date().toISOString() };
+  const now = new Date();
+  const stageTimestamps: Partial<SubmissionRecord> = workflowStage === "manager_review"
+    ? { employee_submitted_at: now.toISOString(), submission_date: now.toISOString().slice(0,10) }
+    : workflowStage === "hod_endorsement" ? { manager_submitted_at: now.toISOString() }
+    : workflowStage === "hr_review" ? { hod_endorsed_at: now.toISOString() }
+    : workflowStage === "completed" ? { hr_reviewed_at: now.toISOString() }
+    : {};
+  const payload = { form_data: formData, workflow_stage: workflowStage, rating: overallRating == null ? null : overallRating.toFixed(2), updated_at: now.toISOString(), ...stageTimestamps };
   const { error } = await supabase.from("appraisal_submissions").update(payload).eq("id", id);
   if (error) throw new Error("The PDR form could not be saved. Please retry.");
   await writeAudit("pdr_form_saved", "appraisal_submission", id, { workflow_stage: workflowStage });

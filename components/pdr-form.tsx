@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { savePdrForm, type DashboardRow, type StaffRecord } from "@/lib/data/client";
+import { savePdrForm, type DashboardRow, type StaffRecord, type WorkflowStage } from "@/lib/data/client";
+import type { CompanyAccess } from "@/lib/data/team";
+import { WorkflowTracker } from "@/components/workflow-tracker";
 
 type Score = "" | "0" | "1" | "2" | "3" | "4" | "5";
 type RatingRow = { employee: Score; manager: Score; comments: string };
@@ -67,17 +69,19 @@ function mergeData(source?: Record<string, unknown> | null): PdrData {
 
 function scoreAverage(rows: RatingRow[]) { const values = rows.flatMap(r=>r.manager ? [Number(r.manager)] : []); return values.length ? values.reduce((a,b)=>a+b,0)/values.length : null; }
 
-export function PdrForm({ row, cycleName = "2026 Year-End Performance and Development Review", previewStaff }: { row?: DashboardRow; cycleName?: string; previewStaff?: StaffRecord }) {
+export function PdrForm({ row, cycleName = "2026 Year-End Performance and Development Review", previewStaff, accessRole }: { row?: DashboardRow; cycleName?: string; previewStaff?: StaffRecord; accessRole?: CompanyAccess["role"] }) {
   const staff = row?.staff || previewStaff || { id:"preview",employee_id:"",full_name:"",email:null,department:null,position:null,manager_email:null,hod_name:null,head_of_division:null,is_manager:false,is_confirmation_staff:false };
   const [data,setData] = useState<PdrData>(()=>mergeData(row?.form_data));
-  const [active,setActive] = useState("particulars"); const [saving,setSaving] = useState(false); const [message,setMessage] = useState("");
+  const [active,setActive] = useState("particulars"); const [saving,setSaving] = useState(false); const [message,setMessage] = useState(""); const [currentStage,setCurrentStage]=useState<WorkflowStage>(row?.workflow_stage||"employee_draft");
   const averageA = useMemo(()=>scoreAverage(data.sectionA),[data.sectionA]); const averageB = useMemo(()=>scoreAverage(data.sectionB),[data.sectionB]);
   const tabs = [["particulars","Particulars"],["a","Section A"],["b","Section B"],["c","Section C"],["d","Section D"],["e","Section E & sign-off"]];
   const updateRating=(section:"sectionA"|"sectionB",index:number,key:keyof RatingRow,value:string)=>setData(old=>({...old,[section]:old[section].map((r,i)=>i===index?{...r,[key]:value}:r)}));
   const updateKpi=(section:"reflection"|"nextKpis",index:number,key:keyof KpiRow,value:string)=>setData(old=>({...old,[section]:old[section].map((r,i)=>i===index?{...r,[key]:value}:r)}));
-  async function save(stage="employee_draft") { if(!row){setMessage("Preview only. HR must create the 2026 cycle before this form can be saved.");return;} setSaving(true);setMessage("");try{await savePdrForm(row.id,data as unknown as Record<string,unknown>,stage,averageA);setMessage(stage==="manager_review"?"Submitted to the reviewing manager.":"Draft saved.");}catch(e){setMessage(e instanceof Error?e.message:"Could not save.");}finally{setSaving(false);} }
+  const nextAction=getNextAction(accessRole,currentStage);
+  async function save(stage=currentStage) { if(!row){setMessage("Preview only. HR must create the 2026 cycle before this form can be saved.");return;} setSaving(true);setMessage("");try{await savePdrForm(row.id,data as unknown as Record<string,unknown>,stage,averageA);setCurrentStage(stage);setMessage(stage===currentStage?"Changes saved.":stageMessage(stage));}catch(e){setMessage(e instanceof Error?e.message:"Could not save.");}finally{setSaving(false);} }
   return <div className="pdr-document">
-    <div className="pdr-actions no-print"><div><span className="pdr-code">SPB/HR/2026_YE</span><h2>{cycleName}</h2><p>{row?`Workflow: ${(row.workflow_stage||"employee_draft").replaceAll("_"," ")}`:"Full form preview"}</p></div><div><button className="button button-secondary" onClick={()=>window.print()}>Print / Save PDF</button><button className="button" disabled={saving} onClick={()=>save()}>{saving?"Saving…":"Save draft"}</button></div></div>
+    <div className="pdr-actions no-print"><div><span className="pdr-code">SPB/HR/2026_YE</span><h2>{cycleName}</h2><p>{row?`${staff.full_name} · ${staff.department||"Department not set"}`:"Full form preview"}</p></div><div><button className="button button-secondary" onClick={()=>window.print()}>Print / Save PDF</button>{currentStage!=="completed"&&accessRole!=="viewer"&&<button className="button" disabled={saving} onClick={()=>save()}>{saving?"Saving…":"Save changes"}</button>}</div></div>
+    {row&&<WorkflowTracker row={row} stageOverride={currentStage}/>}
     <div className="pdr-tabs no-print" role="tablist">{tabs.map(([id,label])=><button key={id} className={active===id?"active":""} onClick={()=>setActive(id)}>{label}</button>)}</div>
     {message&&<p className="pdr-message no-print" role="status">{message}</p>}
     <header className="pdr-print-header"><span>SPB/HR/2026_YE</span><h1>Performance and Development Review Year End</h1></header>
@@ -101,7 +105,7 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
 
     <section className={`pdr-section ${active!=="e"?"tab-hidden":""}`}><h3>Sign-off and endorsement</h3><div className="signature-grid">{[["Employee","employeeDate"],["Immediate superior","managerDate"],["Head of Department","hodDate"],["Head of Division","divisionDate"]].map(([label,key])=><label key={key}><b>{label}</b><span>Electronic acknowledgement</span><input type="date" value={data.signatures[key as keyof typeof data.signatures]} onChange={e=>setData(d=>({...d,signatures:{...d.signatures,[key]:e.target.value}}))}/></label>)}</div>
       {staff.is_confirmation_staff&&<><h3>Section E Staff Confirmation Only</h3><div className="confirmation-choice"><label><input type="radio" name="decision" checked={data.confirmation.decision==="confirm"} onChange={()=>setData(d=>({...d,confirmation:{...d.confirmation,decision:"confirm"}}))}/> Confirm</label><label><input type="radio" name="decision" checked={data.confirmation.decision==="extend"} onChange={()=>setData(d=>({...d,confirmation:{...d.confirmation,decision:"extend"}}))}/> Extend</label></div><label className="pdr-long-field">Remarks<textarea value={data.confirmation.remarks} onChange={e=>setData(d=>({...d,confirmation:{...d.confirmation,remarks:e.target.value}}))}/></label></>}
-      <div className="pdr-final-actions no-print"><button className="button button-secondary" onClick={()=>save()}>Save draft</button><button className="button" onClick={()=>save("manager_review")}>Submit to manager</button></div>
+      {currentStage!=="completed"&&accessRole!=="viewer"&&<div className="pdr-final-actions no-print"><button className="button button-secondary" disabled={saving} onClick={()=>save()}>Save changes</button>{nextAction&&<button className="button" disabled={saving} onClick={()=>save(nextAction.stage)}>{nextAction.label}</button>}</div>}
     </section>
   </div>;
 }
@@ -110,3 +114,19 @@ function Field({label,value,onChange,type="text"}:{label:string;value:string;onC
 function ScoreSelect({value,onChange,label}:{value:Score;onChange:(v:Score)=>void;label:string}) { return <select aria-label={label} value={value} onChange={e=>onChange(e.target.value as Score)}><option value="">—</option>{[0,1,2,3,4,5].map(n=><option key={n}>{n}</option>)}</select>; }
 function RatingSection({id,title,rows,values,active,onChange,average}:{id:string;title:string;rows:readonly (readonly [string,string])[];values:RatingRow[];active:string;onChange:(i:number,k:keyof RatingRow,v:string)=>void;average:number|null}) { return <section className={`pdr-section ${active!==id?"tab-hidden":""}`}><h3>{title}</h3><div className="pdr-table-wrap"><table className="pdr-table rating-table"><thead><tr><th>Competency</th><th>Performance standard</th><th>Employee /5</th><th>Manager /5</th><th>Supporting comments and work examples</th></tr></thead><tbody>{rows.map(([group,text],i)=><tr key={i}><td><b>{group}</b></td><td>{text}</td><td><ScoreSelect label={`Employee score ${i+1}`} value={values[i]?.employee||""} onChange={v=>onChange(i,"employee",v)}/></td><td><ScoreSelect label={`Manager score ${i+1}`} value={values[i]?.manager||""} onChange={v=>onChange(i,"manager",v)}/></td><td><textarea value={values[i]?.comments||""} onChange={e=>onChange(i,"comments",e.target.value)}/></td></tr>)}</tbody><tfoot><tr><th colSpan={3}>Average performance rating</th><th>{average==null?"—":average.toFixed(2)}</th><th></th></tr></tfoot></table></div></section>; }
 function KpiTable({rows,rating=false,onChange}:{rows:KpiRow[];rating?:boolean;onChange:(i:number,k:keyof KpiRow,v:string)=>void}) { return <div className="pdr-table-wrap"><table className="pdr-table kpi-table"><thead><tr><th>Key Result Area KRA</th><th>Key Performance Indicator KPI and measurement</th><th>Action plan</th>{rating&&<th>Rating 1–5</th>}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}><td><textarea value={r.kra} onChange={e=>onChange(i,"kra",e.target.value)}/></td><td><textarea value={r.kpi} onChange={e=>onChange(i,"kpi",e.target.value)}/></td><td><textarea value={r.action} onChange={e=>onChange(i,"action",e.target.value)}/></td>{rating&&<td><ScoreSelect label={`KPI rating ${i+1}`} value={r.rating||""} onChange={v=>onChange(i,"rating",v)}/></td>}</tr>)}</tbody></table></div>; }
+
+function getNextAction(role: CompanyAccess["role"]|undefined, stage: WorkflowStage) {
+  if (role === "employee" && ["employee_draft","returned"].includes(stage)) return { stage:"manager_review" as const, label:"Submit to manager" };
+  if ((role === "manager" || role === "owner" || role === "editor") && stage === "manager_review") return { stage:"hod_endorsement" as const, label:"Send to HOD" };
+  if ((role === "hod" || role === "owner" || role === "editor") && stage === "hod_endorsement") return { stage:"hr_review" as const, label:"Endorse and send to HR" };
+  if ((role === "owner" || role === "editor") && stage === "hr_review") return { stage:"completed" as const, label:"Complete PDR" };
+  return null;
+}
+
+function stageMessage(stage: WorkflowStage) {
+  if (stage === "manager_review") return "Submitted to the reviewing manager.";
+  if (stage === "hod_endorsement") return "Manager review completed and sent to the HOD.";
+  if (stage === "hr_review") return "HOD endorsement completed and sent to HR.";
+  if (stage === "completed") return "PDR completed.";
+  return "Changes saved.";
+}
