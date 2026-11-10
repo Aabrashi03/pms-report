@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client';
 import { teamsEnabled } from '@/lib/data/team';
 import { safeAuthDestination } from '@/lib/auth-redirect';
 import './login.css';
-import './microsoft-login.css';
 
 type Mode = 'signin'|'register'|'forgot';
 export default function LoginPage() {
@@ -44,19 +43,6 @@ export default function LoginPage() {
     };
     void finish();
   },[]);
-  async function signInWithMicrosoft(){
-    setBusy(true);setError('');setMessage('');
-    try {
-      const {error:failure}=await createClient().auth.signInWithOAuth({
-        provider:'azure',
-        options:{scopes:'openid profile email',redirectTo:`${window.location.origin}/auth/callback?next=/`,queryParams:{prompt:'select_account'}},
-      });
-      if(failure)throw failure;
-    } catch {
-      setError('Microsoft sign-in is not available yet. Please contact HR or IT.');
-      setBusy(false);
-    }
-  }
   function switchMode(value:Mode){setMode(value);setShow(false);setPassword('');setConfirm('');setError('');setMessage('');}
   async function submit(event:React.FormEvent){
     event.preventDefault();setError('');setMessage('');
@@ -84,18 +70,17 @@ export default function LoginPage() {
     }catch{setError('We could not connect. Check your connection and try again.');}finally{setBusy(false);}
   }
   async function signOut(){setBusy(true);setError('');try{const {error:failure}=await createClient().auth.signOut();if(failure)throw failure;setSignedIn('');setPassword('');setConfirm('');setMessage('You have signed out.');}catch{setError('Could not sign out. Please try again.');}finally{setBusy(false);}}
-  return <main className="login-screen"><section className="login-story"><Link href="/" className="login-brand"><span>P</span>PMS Executive Suite</Link><div><p className="login-eyebrow">People · Performance · Progress</p><h1>A clear view of<br/>your people.</h1><p>One company workspace for appraisal tracking, department reviews and management reporting.</p></div><small>Company access is assigned by your administrator.</small></section><section className="login-panel"><div className="login-card"><p className="login-eyebrow">Company account</p><h2>{signedIn?'You are signed in':mode==='register'?'Create your account':mode==='forgot'?'Reset your password':'Welcome back'}</h2>
+  return <main className="login-screen"><section className="login-story"><Link href="/" className="login-brand"><span className="login-logo-frame"><img src="/spb-logo.png" alt="SPB"/></span><span className="login-brand-copy"><strong>Selangor Properties</strong><small>Performance &amp; Development Review</small></span></Link><div className="login-story-copy"><p className="login-eyebrow">People · Performance · Progress</p><h1>Performance reviews,<br/>made clear.</h1><p>A secure workspace for employees, managers and HR to complete, review and monitor the year-end PDR process.</p><div className="login-assurance"><span>✓ Role-based access</span><span>✓ Secure employee records</span><span>✓ Online review workflow</span></div></div><small>Authorised SPSB employees only</small></section><section className="login-panel"><div className="login-card"><div className="login-mobile-logo"><img src="/spb-logo.png" alt="SPB"/><span><strong>Selangor Properties</strong><small>PDR Portal</small></span></div><p className="login-eyebrow">SPSB employee portal</p><h2>{signedIn?'You are signed in':mode==='register'?'Create your account':mode==='forgot'?'Reset your password':'Welcome back'}</h2>
     {!teamsEnabled&&<p className="login-notice">Accounts can be set up now. Private company access is still awaiting activation; the current app remains a public demo.</p>}
     {checking?<p role="status">Checking your session…</p>:signedIn?<><p>Signed in as <strong className="login-email">{signedIn}</strong>.</p><Link className="login-primary" href={teamsEnabled?'/':'/team'}>{teamsEnabled?'Open workspace':'View access status'}</Link><button className="login-text" disabled={busy} onClick={signOut}>Sign out</button></>:<>
-      {mode==='signin'&&<><p className="login-description">Use your SPSB Microsoft 365 account. Only <strong>@selangorproperties.com.my</strong> accounts are accepted.</p><button type="button" className="login-microsoft" disabled={busy} onClick={signInWithMicrosoft}><span aria-hidden>▦</span> Continue with Microsoft</button><div className="login-divider"><span>Administrator recovery</span></div></>}
-      <p className="login-description">{mode==='signin'?'HR may use the recovery fields below only while Microsoft access is being configured.':mode==='register'?'Verify your email, then ask the administrator to assign your company role.':'Enter your account email to request a reset link.'}</p>
-      <form onSubmit={submit} className="login-form"><label>Email address<input type="email" required autoComplete="email" value={email} disabled={busy} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></label>
+      <p className="login-description">{mode==='signin'?<>Sign in using your SPSB email and PDR portal password. Access is limited to <strong>@selangorproperties.com.my</strong>.</>:mode==='register'?'Use your SPSB email to create your portal account. HR will assign access according to your role.':'Enter your SPSB email and we will send you a secure reset link.'}</p>
+      <form onSubmit={submit} className="login-form"><label>SPSB email address<input type="email" required autoComplete="email" value={email} disabled={busy} onChange={e=>setEmail(e.target.value)} placeholder="name@selangorproperties.com.my"/></label>
       {mode!=='forgot'&&<><label>Password<span className="login-password"><input type={show?'text':'password'} required minLength={mode==='register'?12:undefined} autoComplete={mode==='register'?'new-password':'current-password'} value={password} disabled={busy} onChange={e=>setPassword(e.target.value)}/><button type="button" aria-label={show?'Hide password':'Show password'} aria-pressed={show} onClick={()=>setShow(!show)}>{show?'Hide':'Show'}</button></span></label>{mode==='register'&&<><small>Use at least 12 characters.</small><label>Confirm password<input type="password" required minLength={12} autoComplete="new-password" value={confirm} disabled={busy} onChange={e=>setConfirm(e.target.value)}/></label></>}</>}
       {mode==='signin'&&<button type="button" className="login-text forgot-link" disabled={busy} onClick={()=>switchMode('forgot')}>Forgot password?</button>}
-      <button className="login-primary" disabled={busy}>{busy?'Please wait…':mode==='register'?'Create account':mode==='forgot'?'Send reset link':'Sign in'}</button></form>
-      <div className="login-switch">{mode==='signin'?<>New here? <button className="login-text" disabled={busy} onClick={()=>switchMode('register')}>Create an account</button></>:<button className="login-text" disabled={busy} onClick={()=>switchMode('signin')}>Back to sign in</button>}</div>
+      <button className="login-primary" disabled={busy}>{busy?'Please wait…':mode==='register'?'Create account':mode==='forgot'?'Send reset link':'Sign in securely'}</button></form>
+      <div className="login-switch">{mode==='signin'?<>First time here? <button className="login-text" disabled={busy} onClick={()=>switchMode('register')}>Create an account</button></>:<button className="login-text" disabled={busy} onClick={()=>switchMode('signin')}>Back to sign in</button>}</div>
     </>}
     {error&&<p className="login-error" role="alert">{error}</p>}{message&&<p className="login-message" role="status">{message}</p>}
-    <footer>Need access? Contact your company administrator.</footer></div></section></main>;
+    <footer><strong>Need help?</strong> Contact HR for account access or assistance.</footer></div><p className="login-privacy">Internal SPSB system · Your access is based on your assigned role.</p></section></main>;
 }
 
