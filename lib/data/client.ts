@@ -22,7 +22,7 @@ export async function getActiveCycleDashboard() {
   return { cycle, rows };
 }
 
-export async function savePdrForm(id: string, formData: Record<string, unknown>, workflowStage: WorkflowStage = "employee_draft", overallRating?: number | null, returnReason = "") {
+export async function savePdrForm(id: string, formData: Record<string, unknown>, workflowStage: WorkflowStage = "employee_draft", overallRating?: number | null, returnReason = "", saveMode:"manual"|"auto"="manual") {
   const supabase = createClient();
   await requireTeamId();
   const access = await getCompanyAccess();
@@ -45,7 +45,7 @@ export async function savePdrForm(id: string, formData: Record<string, unknown>,
   const payload = { form_data: safeForm, workflow_stage: workflowStage, rating: overallRating == null ? null : overallRating.toFixed(2), updated_at: now.toISOString(), ...stageTimestamps };
   const { error } = await supabase.from("appraisal_submissions").update(payload).eq("id", id);
   if (error) throw new Error("The PDR form could not be saved. Please retry.");
-  await writeAudit(returnReason?"pdr_returned":"pdr_form_saved", "appraisal_submission", id, { workflow_stage: workflowStage, from_stage: currentStage, ...(returnReason?{reason:returnReason}:{}) });
+  if(saveMode==="manual")await writeAudit(returnReason?"pdr_returned":"pdr_form_saved", "appraisal_submission", id, { workflow_stage: workflowStage, from_stage: currentStage, ...(returnReason?{reason:returnReason}:{}) });
   let notificationSent:boolean|null=null;
   if(workflowStage!==currentStage){
     try{
