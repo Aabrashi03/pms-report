@@ -27,12 +27,10 @@
 
 /* Soft yellow theme with high-contrast navigation text */
 .sidebar{background:#fff4bf;color:#173f31}
-.brand small,.sidebar-note small{color:#486b57}
+.brand small{color:#486b57}
 .sidebar nav a{color:#1d4b38}
 .sidebar nav a:hover,.sidebar nav a.active{background:#f3d96b;color:#103d2b}
 .sidebar nav a.active{box-shadow:inset 4px 0 #237654}
-.sidebar-note{border-color:#d6b84d;background:#fff9dc}
-.live-dot{background:#39865b;box-shadow:0 0 0 4px #f8e79b}
 .report-hero,.executive-roster{background:#fff4bf;border-color:#d6b84d;color:#173f31}
 .executive-roster{box-shadow:0 4px 14px #47765b1a}
 .executive-roster-top{border-bottom-color:#d6b84d}

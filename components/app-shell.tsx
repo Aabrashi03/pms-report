@@ -74,7 +74,7 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
       <button className="icon-button navigation-close" aria-label="Close navigation" onClick={() => setOpen(false)}>×</button>
       <div className="brand"><span className="brand-mark brand-logo"><img src="/spb-logo.png" alt="SPB"/></span><span><strong>SPSB PDR</strong><small>Performance review portal</small></span></div>
       <nav aria-label="Main navigation">{visibleNav.map(([href, label, icon]) => <Link href={href} key={href} onClick={() => setOpen(false)} aria-current={pathname === href ? "page" : undefined} className={pathname === href ? "active" : ""}><span aria-hidden>{icon}</span>{access?.role==='employee'&&href==='/pdr'?'My PDR':label}</Link>)}</nav>
-      {signedIn?<button type="button" className="button" disabled={signingOut} onClick={signOut}>{signingOut?'Signing out…':'Sign out'}</button>:<Link href="/login" className="button" onClick={() => setOpen(false)}>Sign in</Link>}<div className="sidebar-note"><span className="live-dot" />{teamsEnabled?'2026 PDR workspace':'Demo workspace'}<small>{teamsEnabled ? (access?scope:'Sign in to view your access') : 'Connected to demo appraisal data'}</small></div>
+      {signedIn?<button type="button" className="button" disabled={signingOut} onClick={signOut}>{signingOut?'Signing out…':'Sign out'}</button>:<Link href="/login" className="button" onClick={() => setOpen(false)}>Sign in</Link>}
     </aside>
     {open && <button className="scrim" aria-label="Close navigation" tabIndex={-1} onClick={() => setOpen(false)} />}
     <div className="content-frame" inert={mobile && open}>
