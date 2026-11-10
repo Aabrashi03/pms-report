@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { teamsEnabled, getCompanyAccess, type CompanyAccess } from '@/lib/data/team';
+import { createClient } from '@/lib/supabase/client';
 
 const nav = [
   ["/", "Dashboard", "▦"], ["/pdr", "PDR form", "▤"], ["/staff", "Staff", "♙"], ["/cycles", "Cycles", "◷"], ["/reports", "Reports", "↗"], ["/team", "Team access", "♙"],
@@ -16,13 +17,23 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
   const [access,setAccess] = useState<CompanyAccess|null>(null);
   const [accessError,setAccessError] = useState('');
   const [checking,setChecking] = useState(teamsEnabled);
+  const [signedIn,setSignedIn] = useState(false);
+  const [signingOut,setSigningOut] = useState(false);
   useEffect(()=>{
     if(!teamsEnabled) return;
     let active=true;
     setChecking(true);
+    const auth=createClient().auth;
+    auth.getUser().then(({data})=>{if(active)setSignedIn(!!data.user);});
     getCompanyAccess().then(value=>{if(active){setAccess(value);setAccessError('');}}).catch(error=>{if(active){setAccess(null);setAccessError(error.message);}}).finally(()=>{if(active)setChecking(false);});
     return ()=>{active=false;};
   },[pathname]);
+  async function signOut(){
+    setSigningOut(true);
+    const {error}=await createClient().auth.signOut();
+    if(error){setAccessError('Could not sign out. Please try again.');setSigningOut(false);return;}
+    window.location.assign('/login');
+  }
   const scope = access?.role === 'employee' ? 'Your PDR only' : access?.role === 'manager' ? 'Your assigned employees' : access?.role === 'hod' ? 'Your endorsement queue' : 'Company-wide';
   const sidebar = useRef<HTMLElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -55,7 +66,7 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
       <button className="icon-button navigation-close" aria-label="Close navigation" onClick={() => setOpen(false)}>×</button>
       <div className="brand"><span className="brand-mark">P</span><span><strong>PMS Report</strong><small>People operations</small></span></div>
       <nav aria-label="Main navigation">{nav.map(([href, label, icon]) => <Link href={href} key={href} onClick={() => setOpen(false)} aria-current={pathname === href ? "page" : undefined} className={pathname === href ? "active" : ""}><span aria-hidden>{icon}</span>{label}</Link>)}</nav>
-      <Link href="/login" className="button" onClick={() => setOpen(false)}>Account / Sign in</Link><div className="sidebar-note"><span className="live-dot" />{teamsEnabled?'Company workspace':'Demo workspace'}<small>{teamsEnabled ? (access?scope:'Sign in to view your access') : 'Connected to demo appraisal data'}</small></div>
+      {signedIn?<button type="button" className="button" disabled={signingOut} onClick={signOut}>{signingOut?'Signing out…':'Sign out'}</button>:<Link href="/login" className="button" onClick={() => setOpen(false)}>Sign in</Link>}<div className="sidebar-note"><span className="live-dot" />{teamsEnabled?'Company workspace':'Demo workspace'}<small>{teamsEnabled ? (access?scope:'Sign in to view your access') : 'Connected to demo appraisal data'}</small></div>
     </aside>
     {open && <button className="scrim" aria-label="Close navigation" tabIndex={-1} onClick={() => setOpen(false)} />}
     <div className="content-frame" inert={mobile && open}>
