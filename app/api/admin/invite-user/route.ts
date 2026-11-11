@@ -1,7 +1,7 @@
-import { createClient as createInviteClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { companyResetEmail } from '@/lib/password-reset';
 import { createClient } from '@/lib/supabase/server';
+import { sendWorkflowEmail } from '@/lib/workflow-notifications';
 
 export async function POST(request: NextRequest) {
   const db = await createClient();
@@ -16,15 +16,38 @@ export async function POST(request: NextRequest) {
   catch { return NextResponse.json({ error: 'A valid employee email is required.' }, { status: 400 }); }
   const email=companyResetEmail((body as {email?:unknown})?.email);
   if(!email) return NextResponse.json({ error:'Use a valid SPSB email address.' },{status:400});
-  const {data:staff,error:staffError}=await db.from('staff').select('id,account_activated_at').eq('team_id',membership.team_id).ilike('email',email).single();
+  const {data:staff,error:staffError}=await db.from('staff').select('id,full_name,account_activated_at').eq('team_id',membership.team_id).ilike('email',email).single();
   if(staffError||!staff) return NextResponse.json({ error:'This email is not in the HR staff list.' },{status:404});
   if(staff.account_activated_at) return NextResponse.json({ error:'This employee already has an active account. Use Reset password.' },{status:409});
-  const url=process.env.NEXT_PUBLIC_SUPABASE_URL; const anonKey=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if(!url||!anonKey) return NextResponse.json({ error:'Employee invitations are not configured.' },{status:503});
-  const auth=createInviteClient(url,anonKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}).auth;
-  const {error}=await auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:`${request.nextUrl.origin}/auth/callback?next=/reset-password`}});
-  if(error) return NextResponse.json({ error:'The invitation could not be sent. Please wait a few minutes and try again.' },{status:502});
+
+  const portalUrl=`${request.nextUrl.origin}/login`;
+  const delivery=await sendWorkflowEmail({
+    to:[email],
+    subject:'SPSB PDR Portal - Account Invitation',
+    text:[
+      `Dear ${staff.full_name},`,
+      '',
+      'You have been invited to access the SPSB Performance & Development Review (PDR) Portal.',
+      '',
+      `Portal link: ${portalUrl}`,
+      '',
+      'First-time user instructions:',
+      '1. Open the portal and click Create an account.',
+      '2. Register using your SPSB email address.',
+      '3. Create your PDR portal password.',
+      '4. Confirm your email if requested, then return to the portal and sign in.',
+      '',
+      'If you already have an account, sign in using your SPSB email address and PDR portal password.',
+      '',
+      'Please contact Human Resource & Administration if you require assistance.',
+      '',
+      'Human Resource & Administration',
+      'Selangor Properties Sdn Bhd',
+    ].join('\n'),
+  });
+  if(!delivery.sent) return NextResponse.json({ error:'The invitation could not be sent from the HR mailbox. Please contact IT or try again later.' },{status:502});
+  const provider='provider' in delivery?delivery.provider:'microsoft';
   await db.from('staff').update({account_invited_at:new Date().toISOString()}).eq('id',staff.id);
-  await db.from('audit_log').insert({team_id:membership.team_id,actor_id:user.id,action:'employee_invited',target_type:'staff_account',target_id:staff.id,details:{email}});
-  return NextResponse.json({ok:true});
+  await db.from('audit_log').insert({team_id:membership.team_id,actor_id:user.id,action:'employee_invited',target_type:'staff_account',target_id:staff.id,details:{email,provider}});
+  return NextResponse.json({ok:true,provider});
 }
