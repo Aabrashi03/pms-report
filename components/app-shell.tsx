@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { canOpenWorkspacePath, visibleWorkspacePaths } from '@/lib/role-navigation';
 
 const nav = [
-  ["/", "Dashboard", "dashboard"], ["/pdr", "PDR form", "form"], ["/staff", "Staff", "staff"], ["/cycles", "PDR cycle", "cycle"], ["/reports", "Reports", "report"], ["/team", "User access", "access"],
+  ["/", "Dashboard", "dashboard"], ["/pdr", "PDR form", "form"], ["/staff", "Employees", "staff"], ["/cycles", "PDR cycle", "cycle"], ["/reports", "Reports", "report"], ["/team", "User access", "access"],
 ] as const;
 
 function NavIcon({name}:{name:typeof nav[number][2]}) {

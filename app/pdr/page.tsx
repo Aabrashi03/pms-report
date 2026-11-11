@@ -18,7 +18,7 @@ export default function PdrPage() {
     {loading?<div className="state-card" role="status">Loading PDR form…</div>:<>
       {error&&<p className="pdr-message">{error} A complete form preview is shown below.</p>}
       {!rows.length&&<p className="pdr-message">Form preview. HR must create and activate the 2026 cycle to assign a saveable copy to each employee.</p>}
-      {rows.length>0&&!selected&&<p className="pdr-message">Your email is not matched to an employee record. Open an employee from the dashboard, or update the employee email in Staff.</p>}
+      {rows.length>0&&!selected&&<p className="pdr-message">Your email is not matched to an employee record. Open an employee from the dashboard, or update the employee email in Employees.</p>}
       <PdrForm row={selected} cycleName={cycle} previewStaff={previewStaff} accessRole={access?.role}/>
     </>}
   </AppShell>;
