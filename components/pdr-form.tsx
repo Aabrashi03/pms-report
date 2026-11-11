@@ -108,6 +108,9 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
   const sectionBCompleted=data.sectionB.filter(row=>(reviewUsesManagerRatings?row.manager:row.employee)!=="").length;
   const completedKpis=data.nextKpis.filter(kpi=>kpi.kra.trim()&&kpi.kpi.trim()&&kpi.action.trim()).length;
   const requiredSignature=currentStage==="manager_review"?"managerDate":currentStage==="hod_endorsement"?"hodDate":employeeStage?"employeeDate":"";
+  const hasUnsavedChanges=!!row&&canEdit&&loadedRowId===row.id&&JSON.stringify(data)!==lastSavedSnapshot.current;
+  const saveStatusTone=autoSaveStatus.includes("failed")||autoSaveStatus==="Save failed"?"error":hasUnsavedChanges?(autoSaveStatus.startsWith("Saving")?"saving":"unsaved"):"saved";
+  const visibleSaveStatus=autoSaveStatus||"All changes saved";
   const activeIndex=Math.max(0,tabs.findIndex(([id])=>id===active));
   const previousTab=tabs[activeIndex-1]; const nextTab=tabs[activeIndex+1];
   const openTab=(id:string)=>{setActive(id);window.requestAnimationFrame(()=>document.querySelector(".pdr-tabs")?.scrollIntoView({behavior:"smooth",block:"start"}));};
@@ -119,6 +122,7 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
     return "needs-attention";
   };
   useEffect(()=>{if(!row||!canEdit||loadedRowId!==row.id)return;const snapshot=JSON.stringify(data);if(snapshot===lastSavedSnapshot.current)return;const sequence=++autoSaveSequence.current;setAutoSaveStatus("Unsaved changes");const timer=window.setTimeout(async()=>{setAutoSaveStatus("Saving draft…");try{await savePdrForm(row.id,data as unknown as Record<string,unknown>,currentStage,averageA,"","auto");lastSavedSnapshot.current=snapshot;if(sequence===autoSaveSequence.current)setAutoSaveStatus(`Saved at ${new Intl.DateTimeFormat("en-MY",{hour:"2-digit",minute:"2-digit"}).format(new Date())}`);}catch{if(sequence===autoSaveSequence.current)setAutoSaveStatus("Auto-save failed — select Save changes");}},1000);return()=>window.clearTimeout(timer);},[data,row,canEdit,loadedRowId,currentStage,averageA]);
+  useEffect(()=>{if(!hasUnsavedChanges)return;const warnBeforeUnload=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};const warnBeforeInternalNavigation=(event:MouseEvent)=>{const target=event.target;if(!(target instanceof Element))return;const link=target.closest("a[href]") as HTMLAnchorElement|null;if(!link||link.target==="_blank"||link.hasAttribute("download")||link.href===window.location.href||link.href.startsWith(`${window.location.href}#`))return;if(!window.confirm("Your latest changes have not been saved yet. Leave this page and discard them?")){event.preventDefault();event.stopPropagation();}};window.addEventListener("beforeunload",warnBeforeUnload);document.addEventListener("click",warnBeforeInternalNavigation,true);return()=>{window.removeEventListener("beforeunload",warnBeforeUnload);document.removeEventListener("click",warnBeforeInternalNavigation,true);};},[hasUnsavedChanges]);
   async function save(stage=currentStage,reason="") {
     if(!row){setMessage("Preview only. HR must create the 2026 cycle before this form can be saved.");return false;}
     setSaving(true);setMessage("");setAutoSaveStatus("Saving draft…");const changed=stage!==currentStage;const nextData={...data,workflow:reason?{returnReason:reason,returnedAt:new Date().toISOString(),returnedByRole:accessRole||"reviewer"}:changed?{...data.workflow,returnReason:""}:data.workflow};
@@ -127,7 +131,7 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
     finally{setSaving(false);}
   }
   return <div className="pdr-document">
-    <div className="pdr-actions no-print"><div><h2>{cycleName}</h2><p>{row?`${staff.full_name} · ${staff.department||"Department not set"}`:"Full form preview"}</p></div><div className="pdr-action-controls">{canEdit&&<span className="autosave-status" role="status">{autoSaveStatus||"Auto-save ready"}</span>}<button className="button button-secondary" onClick={()=>window.print()}>Print / Save PDF</button>{canEdit&&<button className="button" disabled={saving} onClick={()=>save()}>{saving?"Saving…":"Save changes"}</button>}</div></div>
+    <div className="pdr-actions no-print"><div><h2>{cycleName}</h2><p>{row?`${staff.full_name} · ${staff.department||"Department not set"}`:"Full form preview"}</p></div><div className="pdr-action-controls">{canEdit&&<span className={`autosave-status ${saveStatusTone}`} role="status" aria-live="polite"><i aria-hidden/>{visibleSaveStatus}</span>}<button className="button button-secondary" onClick={()=>window.print()}>Print / Save PDF</button>{canEdit&&<button className="button" disabled={saving} onClick={()=>save()}>{saving?"Saving…":"Save changes"}</button>}</div></div>
     {row&&<WorkflowTracker row={row} stageOverride={currentStage}/>}
     {row&&<p className={`access-guidance no-print ${canEdit?"can-edit":"read-only"}`}>{accessMessage}</p>}
     {data.workflow.returnReason&&currentStage!=="completed"&&<aside className="return-notice no-print" role="status"><strong>Correction requested</strong><p>{data.workflow.returnReason}</p>{data.workflow.returnedAt&&<small>Returned {new Intl.DateTimeFormat("en-MY",{dateStyle:"medium",timeStyle:"short"}).format(new Date(data.workflow.returnedAt))}</small>}</aside>}
