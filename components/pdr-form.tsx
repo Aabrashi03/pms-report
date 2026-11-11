@@ -74,7 +74,7 @@ function mergeData(source?: Record<string, unknown> | null): PdrData {
 function scoreAverage(rows: RatingRow[]) { const values = rows.flatMap(r=>r.manager ? [Number(r.manager)] : []); return values.length ? values.reduce((a,b)=>a+b,0)/values.length : null; }
 
 export function PdrForm({ row, cycleName = "2026 Year-End Performance and Development Review", previewStaff, accessRole }: { row?: DashboardRow; cycleName?: string; previewStaff?: StaffRecord; accessRole?: CompanyAccess["role"] }) {
-  const staff = row?.staff || previewStaff || { id:"preview",employee_id:"",full_name:"",email:null,department:null,position:null,manager_email:null,hod_name:null,head_of_division:null,is_manager:false,is_confirmation_staff:false };
+  const staff = row?.staff || previewStaff || { id:"preview",employee_id:"",full_name:"",email:null,department:null,position:null,category:null,manager_email:null,hod_name:null,head_of_division:null,is_manager:false,is_confirmation_staff:false };
   const [data,setData] = useState<PdrData>(()=>mergeData(row?.form_data));
   const [active,setActive] = useState("particulars"); const [saving,setSaving] = useState(false); const [message,setMessage] = useState(""); const [currentStage,setCurrentStage]=useState<WorkflowStage>(row?.workflow_stage||"employee_draft");
   const [returnOpen,setReturnOpen]=useState(false); const [returnReason,setReturnReason]=useState(""); const [returnStage,setReturnStage]=useState<WorkflowStage>("returned"); const [confirmOpen,setConfirmOpen]=useState(false);
@@ -145,6 +145,7 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
       <Field label="Reviewing manager" value={staff.manager_email||""}/><Field label="Date of PDR" type="date" value={data.particulars.pdrDate} disabled={!canEdit} incomplete={employeeStage&&!data.particulars.pdrDate} onChange={v=>setData(d=>({...d,particulars:{...d.particulars,pdrDate:v}}))}/>
       <Field label="Position" value={staff.position||""}/><Field label="Confirmation due date" type="date" value={data.particulars.confirmationDueDate} disabled={!isHr} onChange={v=>setData(d=>({...d,particulars:{...d.particulars,confirmationDueDate:v}}))}/>
       <Field label="Division / Department" value={staff.department||""}/><Field label="Last PDR date" type="date" value={data.particulars.lastPdrDate} disabled={!isHr} onChange={v=>setData(d=>({...d,particulars:{...d.particulars,lastPdrDate:v}}))}/>
+      <Field label="Category" value={staff.category||""}/>
     </div><div className="rating-guide"><h4>Performance rating scale</h4><div>{[["0–1","Unsatisfactory"],["2","Improvement needed"],["3","Competent"],["4","Commendable"],["5","Exceptional performance"]].map(([n,t])=><span key={n}><b>{n}</b>{t}</span>)}</div></div></section>
 
     <RatingSection id="a" title="Section A Core Competencies" rows={sectionA} values={data.sectionA} active={active} onChange={(i,k,v)=>updateRating("sectionA",i,k,v)} average={averageA} canEditEmployee={canEditEmployeeScore} canEditManager={canEditManagerScore} canEditComments={canEditShared} requiredEmployeeCount={employeeStage?expectedRatings:0} requiredManagerCount={currentStage==="manager_review"?expectedRatings:0}/>

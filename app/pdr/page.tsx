@@ -7,7 +7,7 @@ import { getActiveCycleDashboard, type DashboardRow, type StaffRecord } from "@/
 import { getCompanyAccess, type CompanyAccess } from "@/lib/data/team";
 import { createClient } from "@/lib/supabase/client";
 
-const previewStaff: StaffRecord = { id:"preview", employee_id:"", full_name:"Employee name", email:null, position:"Position", department:"Division / Department", manager_email:"reviewing.manager@selangorproperties.com.my", hod_name:"Head of Department", head_of_division:"Head of Division", is_manager:false, is_confirmation_staff:true };
+const previewStaff: StaffRecord = { id:"preview", employee_id:"", full_name:"Employee name", email:null, position:"Position", department:"Division / Department", category:"Category", manager_email:"reviewing.manager@selangorproperties.com.my", hod_name:"Head of Department", head_of_division:"Head of Division", is_manager:false, is_confirmation_staff:true };
 
 export default function PdrPage() {
   const [requested,setRequested]=useState<string|null>(null);

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/client";
 import { deriveStatus, type SubmissionStatus } from "./types";
 import { hasSeparateHod } from "@/lib/workflow-route";
 
-export type StaffRecord = { id: string; employee_id: string; full_name: string; email: string | null; department: string | null; position: string | null; manager_email: string | null; hod_name: string | null; hod_email?: string | null; head_of_division: string | null; head_of_division_email?: string | null; is_manager: boolean; is_confirmation_staff: boolean; account_invited_at?: string | null; account_activated_at?: string | null };
+export type StaffRecord = { id: string; employee_id: string; full_name: string; email: string | null; department: string | null; position: string | null; category: string | null; manager_email: string | null; hod_name: string | null; hod_email?: string | null; head_of_division: string | null; head_of_division_email?: string | null; is_manager: boolean; is_confirmation_staff: boolean; account_invited_at?: string | null; account_activated_at?: string | null };
 export type WorkflowStage = "employee_draft" | "returned" | "manager_review" | "hod_endorsement" | "hr_review" | "completed";
 export type SubmissionRecord = { id: string; cycle_id: string; staff_id: string; status: SubmissionStatus; submission_date: string | null; rating: string | null; reviewer_name: string | null; comments: string | null; workflow_stage?: WorkflowStage; employee_submitted_at?: string | null; manager_submitted_at?: string | null; hod_endorsed_at?: string | null; hr_reviewed_at?: string | null; form_data?: Record<string, unknown> | null };
 export type DashboardRow = SubmissionRecord & { staff: StaffRecord; derived_status: SubmissionStatus };
@@ -14,7 +14,7 @@ export async function getActiveCycleDashboard() {
   const { data: cycle, error: cycleError } = await supabase.from("appraisal_cycles").select("id,name,due_date").eq("status", "active").order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (cycleError) throw new Error(cycleError.message);
   if (!cycle) return { cycle: null, rows: [] as DashboardRow[] };
-  const { data, error } = await supabase.from("appraisal_submissions").select("id,cycle_id,staff_id,status,submission_date,rating,reviewer_name,comments,workflow_stage,employee_submitted_at,manager_submitted_at,hod_endorsed_at,hr_reviewed_at,form_data,staff!appraisal_submissions_staff_id_fkey!inner(id,employee_id,full_name,email,department,position,manager_email,hod_name,hod_email,head_of_division,head_of_division_email,is_manager,is_confirmation_staff)").eq("cycle_id", cycle.id);
+  const { data, error } = await supabase.from("appraisal_submissions").select("id,cycle_id,staff_id,status,submission_date,rating,reviewer_name,comments,workflow_stage,employee_submitted_at,manager_submitted_at,hod_endorsed_at,hr_reviewed_at,form_data,staff!appraisal_submissions_staff_id_fkey!inner(id,employee_id,full_name,email,department,position,category,manager_email,hod_name,hod_email,head_of_division,head_of_division_email,is_manager,is_confirmation_staff)").eq("cycle_id", cycle.id);
   if (error) throw new Error(error.message);
   const rows = (data || []).map((item) => {
     const staff = (Array.isArray(item.staff) ? item.staff[0] : item.staff) as StaffRecord;
@@ -86,7 +86,7 @@ export async function saveSubmission(input: { id?: string; cycleId: string; staf
 
 export async function getStaff() {
   await requireTeamId();
-  const { data, error } = await createClient().from("staff").select("id,employee_id,full_name,email,department,position,manager_email,hod_name,hod_email,head_of_division,head_of_division_email,is_manager,is_confirmation_staff,account_invited_at,account_activated_at").order("full_name");
+  const { data, error } = await createClient().from("staff").select("id,employee_id,full_name,email,department,position,category,manager_email,hod_name,hod_email,head_of_division,head_of_division_email,is_manager,is_confirmation_staff,account_invited_at,account_activated_at").order("full_name");
   if (error) throw new Error(error.message);
   return (data || []) as StaffRecord[];
 }
@@ -95,7 +95,7 @@ export async function saveStaff(input: Omit<StaffRecord, "id"> & { id?: string }
   await requireCompanyEditor();
   const supabase = createClient();
   const teamId = await requireTeamId();
-  const payload = { ...(teamId ? { team_id: teamId } : {}), employee_id: input.employee_id.trim(), full_name: input.full_name.trim(), email: input.email?.trim().toLowerCase() || null, department: input.department?.trim() || null, position: input.position?.trim() || null, manager_email: input.manager_email?.trim().toLowerCase() || null, hod_name: input.hod_name?.trim() || null, hod_email: input.hod_email?.trim().toLowerCase() || null, head_of_division: input.head_of_division?.trim() || null, head_of_division_email: input.head_of_division_email?.trim().toLowerCase() || null, is_manager: input.is_manager, is_confirmation_staff: input.is_confirmation_staff };
+  const payload = { ...(teamId ? { team_id: teamId } : {}), employee_id: input.employee_id.trim(), full_name: input.full_name.trim(), email: input.email?.trim().toLowerCase() || null, department: input.department?.trim() || null, position: input.position?.trim() || null, category: input.category?.trim() || null, manager_email: input.manager_email?.trim().toLowerCase() || null, hod_name: input.hod_name?.trim() || null, hod_email: input.hod_email?.trim().toLowerCase() || null, head_of_division: input.head_of_division?.trim() || null, head_of_division_email: input.head_of_division_email?.trim().toLowerCase() || null, is_manager: input.is_manager, is_confirmation_staff: input.is_confirmation_staff };
   const result = input.id ? await supabase.from("staff").update(payload).eq("id", input.id).select("id").single() : await supabase.from("staff").insert(payload).select("id").single();
   if (result.error) {
     if (result.error.code === "23505") throw new Error("Employee ID or SPSB email already exists.");
