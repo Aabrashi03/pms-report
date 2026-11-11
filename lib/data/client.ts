@@ -86,7 +86,7 @@ export async function saveSubmission(input: { id?: string; cycleId: string; staf
 
 export async function getStaff() {
   await requireTeamId();
-  const { data, error } = await createClient().from("staff").select("id,employee_id,full_name,email,department,position,manager_email,hod_name,head_of_division,is_manager,is_confirmation_staff,account_invited_at,account_activated_at").order("full_name");
+  const { data, error } = await createClient().from("staff").select("id,employee_id,full_name,email,department,position,manager_email,hod_name,hod_email,head_of_division,head_of_division_email,is_manager,is_confirmation_staff,account_invited_at,account_activated_at").order("full_name");
   if (error) throw new Error(error.message);
   return (data || []) as StaffRecord[];
 }
@@ -95,7 +95,7 @@ export async function saveStaff(input: Omit<StaffRecord, "id"> & { id?: string }
   await requireCompanyEditor();
   const supabase = createClient();
   const teamId = await requireTeamId();
-  const payload = { ...(teamId ? { team_id: teamId } : {}), employee_id: input.employee_id.trim(), full_name: input.full_name.trim(), email: input.email?.trim().toLowerCase() || null, department: input.department?.trim() || null, position: input.position?.trim() || null, manager_email: input.manager_email?.trim().toLowerCase() || null, hod_name: input.hod_name?.trim() || null, head_of_division: input.head_of_division?.trim() || null, is_manager: input.is_manager, is_confirmation_staff: input.is_confirmation_staff };
+  const payload = { ...(teamId ? { team_id: teamId } : {}), employee_id: input.employee_id.trim(), full_name: input.full_name.trim(), email: input.email?.trim().toLowerCase() || null, department: input.department?.trim() || null, position: input.position?.trim() || null, manager_email: input.manager_email?.trim().toLowerCase() || null, hod_name: input.hod_name?.trim() || null, hod_email: input.hod_email?.trim().toLowerCase() || null, head_of_division: input.head_of_division?.trim() || null, head_of_division_email: input.head_of_division_email?.trim().toLowerCase() || null, is_manager: input.is_manager, is_confirmation_staff: input.is_confirmation_staff };
   const result = input.id ? await supabase.from("staff").update(payload).eq("id", input.id).select("id").single() : await supabase.from("staff").insert(payload).select("id").single();
   if (result.error) {
     if (result.error.code === "23505") throw new Error("Employee ID or SPSB email already exists.");
