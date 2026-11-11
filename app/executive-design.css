@@ -41,6 +41,7 @@
 .completion-ring small{color:#c5d8ce}
 .workflow-track{background:#3d7762}
 .employee-focus-card{background:linear-gradient(125deg,var(--green),var(--green-mid));color:#fff;box-shadow:0 6px 22px #0b4a3624}
+.employee-focus-card .eyebrow{color:var(--lime);font-weight:850}
 .employee-focus-card>div>p:last-child{color:#d3e1da}
 .employee-next-action{background:#145540;border-color:#3d7762;color:#fff}
 .employee-next-action>span,.employee-next-action>small{color:#c5d8ce}
