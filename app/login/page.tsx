@@ -81,6 +81,6 @@ export default function LoginPage() {
       <div className="login-switch">{mode==='signin'?<>First time here? <button className="login-text" disabled={busy} onClick={()=>switchMode('register')}>Create an account</button></>:<button className="login-text" disabled={busy} onClick={()=>switchMode('signin')}>Back to sign in</button>}</div>
     </>}
     {error&&<p className="login-error" role="alert">{error}</p>}{message&&<p className="login-message" role="status">{message}</p>}
-    <footer><strong>Need help?</strong> Contact HR for account access or assistance.</footer></div><p className="login-privacy">Internal SPSB system · Your access is based on your assigned role.</p><span className="login-version">PDR Portal · Version 1.0</span></section></main>;
+    <footer><strong>Need help?</strong> Contact HR for account access or assistance.</footer></div><p className="login-privacy">© 2026 Selangor Properties Sdn Bhd. All rights reserved. For authorised internal use only. Managed by Human Resource &amp; Administration.</p><span className="login-version">PDR Portal · Version 1.0</span></section></main>;
 }
 
