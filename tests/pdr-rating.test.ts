@@ -52,3 +52,12 @@ test('does not publish a Section C average until every completed KPI row is rate
   assert.equal(result.completed,1);
   assert.equal(result.applicable,2);
 });
+
+test('does not mark an overall rating complete while a required section is unfinished',()=>{
+  const sectionA=calculateRating([{employee:'4'},{employee:''}],'employee',2);
+  const sectionB=calculateRating([{employee:'3'}],'employee',1);
+  const sectionC=calculateKpiRating([{kra:'KRA',kpi:'KPI',action:'Action',rating:'5'}]);
+  const overall=combineRatings(sectionA,sectionB,sectionC);
+  assert.equal(overall.complete,false);
+  assert.equal(displayRating(overall.complete?overall.average:null),'—');
+});
