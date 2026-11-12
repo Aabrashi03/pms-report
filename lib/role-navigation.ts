@@ -16,3 +16,10 @@ export function canOpenWorkspacePath(role: WorkspaceRole | undefined, pathname: 
 export function visibleWorkspacePaths(role: WorkspaceRole | undefined) {
   return role ? allowedPaths[role] : ['/', '/pdr'];
 }
+
+export function effectivePdrRole(role: WorkspaceRole | undefined, viewerEmail: string | null | undefined, employeeEmail: string | null | undefined): WorkspaceRole | undefined {
+  if (role === 'owner' || role === 'editor') return role;
+  const viewer = viewerEmail?.trim().toLowerCase();
+  const employee = employeeEmail?.trim().toLowerCase();
+  return viewer && employee && viewer === employee ? 'employee' : role;
+}
