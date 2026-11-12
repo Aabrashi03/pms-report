@@ -124,6 +124,7 @@ button, a { -webkit-tap-highlight-color:transparent; }
 
 /* Guided section navigation */
 .pdr-tabs button{display:grid;gap:3px;text-align:left}.pdr-tabs button>span{font-size:12px}.pdr-tabs .tab-state{font-size:8px;font-weight:800;letter-spacing:.02em;text-transform:none;color:#7a6a2c}.pdr-tabs .tab-state.complete{color:#1f7147}.pdr-tabs .tab-state.in-progress{color:#756013}.pdr-tabs .tab-state.needs-attention{color:#9a5413}.pdr-tabs .tab-state.optional{color:#69756d}.pdr-tabs button.active .tab-state{color:#dff1e6}.pdr-section-navigation{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 18px;border:1px solid #eadb99;border-radius:10px;background:#fff9dc}.pdr-section-navigation>span{display:grid;gap:3px}.pdr-section-navigation b{font-size:12px;color:#173f31}.pdr-section-navigation small{font-size:10px;color:#64766a}.pdr-section-navigation>div{display:flex;gap:8px}.pdr-section-navigation .button{min-width:130px}
+.pdr-tabs .tab-state.pending-review{color:#65736a}
 @media(max-width:800px){.pdr-tabs button{min-width:125px}.pdr-section-navigation{align-items:stretch;flex-direction:column}.pdr-section-navigation>div{display:grid;grid-template-columns:1fr 1fr}.pdr-section-navigation .button{min-width:0;width:100%}}
 
 /* Interface-only guidance: sticky tabs, required-field cues and submit confirmation */

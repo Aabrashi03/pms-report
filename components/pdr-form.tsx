@@ -138,6 +138,9 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
   const openTab=(id:string)=>{setActive(id);window.requestAnimationFrame(()=>document.querySelector(".pdr-tabs")?.scrollIntoView({behavior:"smooth",block:"start"}));};
   const tabState=(id:string)=>{
     if(id==="review")return readyToSubmit?"complete":"needs-attention";
+    if(id==="a"&&reviewUsesManagerRatings){if(reviewRatingA.complete)return "complete";if(employeeReviewRatingA.complete&&reviewRatingA.completed===0)return "pending-review";if(reviewRatingA.completed)return "in-progress";}
+    if(id==="b"&&reviewUsesManagerRatings){if(reviewRatingB.complete)return "complete";if(employeeReviewRatingB.complete&&reviewRatingB.completed===0)return "pending-review";if(reviewRatingB.completed)return "in-progress";}
+    if(id==="c"){const hasContent=!!(data.particulars.kpiFrom||data.particulars.kpiTo||data.reflection.some(item=>item.kra||item.kpi||item.action||item.rating)||data.nextKpis.some(item=>item.kra||item.kpi||item.action));const complete=!!data.particulars.kpiFrom&&!!data.particulars.kpiTo&&completedKpis>0&&(sectionCRating.applicable===0||sectionCRating.complete);return complete?"complete":hasContent?"in-progress":"needs-attention";}
     const required=readiness.find(item=>item.id===id); if(!required)return "neutral"; if(required.complete)return "complete";
     if((id==="a"&&sectionACompleted)||(id==="b"&&sectionBCompleted)||(id==="c"&&(data.particulars.kpiFrom||data.particulars.kpiTo||data.nextKpis.some(item=>item.kra||item.kpi||item.action)))||(id==="d"&&data.training.some(item=>Object.values(item).some(Boolean)))||(id==="e"&&Object.values(data.signatures).some(Boolean)))return "in-progress";
     return "needs-attention";
@@ -156,7 +159,7 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
     {row&&<WorkflowTracker row={row} stageOverride={currentStage}/>}
     {row&&<p className={`access-guidance no-print ${canEdit?"can-edit":"read-only"}`}>{accessMessage}</p>}
     {data.workflow.returnReason&&currentStage!=="completed"&&<aside className="return-notice no-print" role="status"><strong>Correction requested</strong><p>{data.workflow.returnReason}</p>{data.workflow.returnedAt&&<small>Returned {new Intl.DateTimeFormat("en-MY",{dateStyle:"medium",timeStyle:"short"}).format(new Date(data.workflow.returnedAt))}</small>}</aside>}
-    <div className="pdr-tabs no-print" role="tablist">{tabs.map(([id,label])=>{const state=tabState(id);return <button key={id} className={active===id?"active":""} onClick={()=>openTab(id)}><span>{label}</span>{state!=="neutral"&&<small className={`tab-state ${state}`}>{state==="complete"?"✓ Complete":state==="in-progress"?"● In progress":"! Needs attention"}</small>}</button>})}</div>
+    <div className="pdr-tabs no-print" role="tablist">{tabs.map(([id,label])=>{const state=tabState(id);return <button key={id} className={active===id?"active":""} onClick={()=>openTab(id)}><span>{label}</span>{state!=="neutral"&&<small className={`tab-state ${state}`}>{state==="complete"?"✓ Complete":state==="in-progress"?"● In progress":state==="pending-review"?"○ Superior review pending":"! Needs attention"}</small>}</button>})}</div>
     {message&&<p className="pdr-message no-print" role="status">{message}</p>}
     <header className="pdr-print-header"><h1>Performance and Development Review Year End</h1></header>
 
@@ -200,12 +203,16 @@ function getReadiness(data:PdrData,staff:StaffRecord,stage:WorkflowStage,role:Co
   const completedA=data.sectionA.slice(0,expectedA).filter(row=>row[ratingKey]!=="").length;
   const completedB=data.sectionB.filter(row=>row[ratingKey]!=="").length;
   const fullKpis=data.nextKpis.filter(row=>row.kra.trim()&&row.kpi.trim()&&row.action.trim()).length;
+  const sectionCRating=calculateKpiRating(data.reflection);
+  const sectionCComplete=!!data.particulars.kpiFrom&&!!data.particulars.kpiTo&&fullKpis>0&&(sectionCRating.applicable===0||sectionCRating.complete);
+  const sectionCDetail=!data.particulars.kpiFrom||!data.particulars.kpiTo?"Complete the KPI evaluation-period dates":!fullKpis?"Complete at least one next-period KPI":sectionCRating.applicable&&!sectionCRating.complete?`${sectionCRating.completed} of ${sectionCRating.applicable} completed KPI rows rated`:`${fullKpis} next-period KPI${fullKpis===1?"":"s"} and ${sectionCRating.completed} prior KPI rating${sectionCRating.completed===1?"":"s"} completed`;
   const fullDevelopmentPlans=data.training.filter(row=>Object.values(row).every(value=>value.trim())).length;
   if(stage==="hod_endorsement"&&!employeePostSubmission) return [{id:"e",label:"N+2 electronic acknowledgement",detail:data.signatures.hodDate?"Endorsement date recorded":"Enter the endorsement date",complete:!!data.signatures.hodDate}];
   if((stage==="hr_review"||stage==="completed")&&!employeePostSubmission) return [{id:"review",label:"PDR received by HR",detail:"The appraisal workflow has reached HR",complete:true}];
   if(stage==="manager_review"&&!employeePostSubmission) return [
     {id:"a",label:"Section A manager ratings",detail:`${completedA} of ${expectedA} applicable ratings completed`,complete:completedA===expectedA},
     {id:"b",label:"Section B manager ratings",detail:`${completedB} of ${sectionB.length} ratings completed`,complete:completedB===sectionB.length},
+    {id:"c",label:"Section C KPI review",detail:sectionCDetail,complete:sectionCComplete},
     {id:"d",label:"Training and development needs",detail:fullDevelopmentPlans?`${fullDevelopmentPlans} complete development plan${fullDevelopmentPlans===1?"":"s"} recorded`:"Complete at least one development plan",complete:fullDevelopmentPlans>0},
     {id:"e",label:"Manager electronic acknowledgement",detail:data.signatures.managerDate?"Acknowledgement date recorded":"Enter the manager acknowledgement date",complete:!!data.signatures.managerDate},
   ];
@@ -213,7 +220,7 @@ function getReadiness(data:PdrData,staff:StaffRecord,stage:WorkflowStage,role:Co
     {id:"particulars",label:"PDR date",detail:data.particulars.pdrDate?"Date recorded":"Enter the date of the PDR discussion",complete:!!data.particulars.pdrDate},
     {id:"a",label:"Section A self-assessment",detail:`${completedA} of ${expectedA} applicable ratings completed`,complete:completedA===expectedA},
     {id:"b",label:"Section B self-assessment",detail:`${completedB} of ${sectionB.length} ratings completed`,complete:completedB===sectionB.length},
-    {id:"c",label:"KPI period and objectives",detail:fullKpis?`${fullKpis} complete KPI${fullKpis===1?"":"s"} recorded`:"Complete the KPI dates and at least one objective",complete:!!data.particulars.kpiFrom&&!!data.particulars.kpiTo&&fullKpis>0},
+    {id:"c",label:"KPI period, objectives and ratings",detail:sectionCDetail,complete:sectionCComplete},
     {id:"d",label:"Training and development needs",detail:fullDevelopmentPlans?`${fullDevelopmentPlans} complete development plan${fullDevelopmentPlans===1?"":"s"} recorded`:"Complete at least one development plan",complete:fullDevelopmentPlans>0},
     {id:"e",label:"Employee electronic acknowledgement",detail:data.signatures.employeeDate?"Acknowledgement date recorded":"Enter your acknowledgement date",complete:!!data.signatures.employeeDate},
   ];
