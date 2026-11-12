@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { companyResetEmail } from '@/lib/password-reset';
+import { buildInvitationEmail, invitationEmailSubject } from '@/lib/invitation-email';
 import { createClient } from '@/lib/supabase/server';
 import { sendWorkflowEmail } from '@/lib/workflow-notifications';
 
@@ -23,27 +24,8 @@ export async function POST(request: NextRequest) {
   const portalUrl=`${request.nextUrl.origin}/login`;
   const delivery=await sendWorkflowEmail({
     to:[email],
-    subject:'SPSB PDR Portal - Account Invitation',
-    text:[
-      `Dear ${staff.full_name},`,
-      '',
-      'You have been invited to access the SPSB Performance & Development Review (PDR) Portal.',
-      '',
-      `Portal link: ${portalUrl}`,
-      '',
-      'First-time user instructions:',
-      '1. Open the portal and click Create an account.',
-      '2. Register using your SPSB email address.',
-      '3. Create your PDR portal password.',
-      '4. Confirm your email if requested, then return to the portal and sign in.',
-      '',
-      'If you already have an account, sign in using your SPSB email address and PDR portal password.',
-      '',
-      'Please contact Human Resource & Administration if you require assistance.',
-      '',
-      'Human Resource & Administration',
-      'Selangor Properties Sdn Bhd',
-    ].join('\n'),
+    subject:invitationEmailSubject,
+    text:buildInvitationEmail(staff.full_name,portalUrl),
   });
   if(!delivery.sent) return NextResponse.json({ error:'The invitation could not be sent from the HR mailbox. Please contact IT or try again later.' },{status:502});
   const provider='provider' in delivery?delivery.provider:'microsoft';
