@@ -98,16 +98,16 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
   const canEditManagerScore=isHr||managerTurn;
   const canEditShared=isHr||employeeTurn||managerTurn;
   const canEditDates=isHr||employeeTurn||managerTurn||hodTurn;
-  const accessMessage=isHr?"HR administrator access: all sections can be revised.":employeeTurn?"Employee access: complete your self-assessment, KPIs and development needs.":managerTurn?`${firstApproverLabel(staff)} access: review the employee's evidence and enter ratings.`:hodTurn?`${secondApproverLabel(staff)} access: review the completed assessment and add your endorsement.`:"This PDR is read-only at the current workflow stage.";
+  const accessMessage=isHr?"HR administrator access: all sections can be revised.":employeeTurn?"Employee access: complete your self-assessment, KPIs and development needs.":accessRole==="employee"&&currentStage==="manager_review"?`Your self-assessment has been submitted and is now read-only while ${firstApproverLabel(staff)} completes the review.`:managerTurn?`${firstApproverLabel(staff)} access: review the employee's evidence and enter ratings.`:hodTurn?`${secondApproverLabel(staff)} access: review the completed assessment and add your endorsement.`:"This PDR is read-only at the current workflow stage.";
   const tabs = [["particulars","Particulars"],["a","Section A"],["b","Section B"],["c","Section C"],["d","Section D"],["e","Section E & sign-off"],["review","Review & submit"]] as const;
   const signers = [["Employee","employeeDate",isHr||employeeTurn],[firstApproverLabel(staff),"managerDate",isHr||managerTurn],...(separateHod?[[secondApproverLabel(staff),"hodDate",isHr||hodTurn] as const]:[]),["HR administration (optional)","divisionDate",isHr]] as const;
   const updateRating=(section:"sectionA"|"sectionB",index:number,key:keyof RatingRow,value:string)=>setData(old=>({...old,[section]:old[section].map((r,i)=>i===index?{...r,[key]:value}:r)}));
   const updateKpi=(section:"reflection"|"nextKpis",index:number,key:keyof KpiRow,value:string)=>setData(old=>({...old,[section]:old[section].map((r,i)=>i===index?{...r,[key]:value}:r)}));
   const nextAction=getNextAction(accessRole,currentStage,staff);
   const returnOptions=getReturnOptions(accessRole,currentStage,separateHod);
-  const readiness=useMemo(()=>getReadiness(data,staff,currentStage),[data,staff,currentStage]);
+  const readiness=useMemo(()=>getReadiness(data,staff,currentStage,accessRole),[data,staff,currentStage,accessRole]);
   const readyToSubmit=readiness.every(item=>item.complete);
-  const reviewUsesManagerRatings=["manager_review","hod_endorsement","hr_review","completed"].includes(currentStage);
+  const reviewUsesManagerRatings=accessRole!=="employee"&&["manager_review","hod_endorsement","hr_review","completed"].includes(currentStage);
   const sectionACompleted=data.sectionA.slice(0,expectedRatings).filter(row=>(reviewUsesManagerRatings?row.manager:row.employee)!=="").length;
   const sectionBCompleted=data.sectionB.filter(row=>(reviewUsesManagerRatings?row.manager:row.employee)!=="").length;
   const completedKpis=data.nextKpis.filter(kpi=>kpi.kra.trim()&&kpi.kpi.trim()&&kpi.action.trim()).length;
@@ -177,16 +177,17 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
   </div>;
 }
 
-function getReadiness(data:PdrData,staff:StaffRecord,stage:WorkflowStage):ReadinessItem[]{
+function getReadiness(data:PdrData,staff:StaffRecord,stage:WorkflowStage,role:CompanyAccess["role"]|undefined):ReadinessItem[]{
   const expectedA=applicableSectionARows(staff);
-  const ratingKey:keyof RatingRow=stage==="manager_review"?"manager":"employee";
+  const employeePostSubmission=role==="employee"&&!["employee_draft","returned"].includes(stage);
+  const ratingKey:keyof RatingRow=stage==="manager_review"&&!employeePostSubmission?"manager":"employee";
   const completedA=data.sectionA.slice(0,expectedA).filter(row=>row[ratingKey]!=="").length;
   const completedB=data.sectionB.filter(row=>row[ratingKey]!=="").length;
   const fullKpis=data.nextKpis.filter(row=>row.kra.trim()&&row.kpi.trim()&&row.action.trim()).length;
   const fullDevelopmentPlans=data.training.filter(row=>Object.values(row).every(value=>value.trim())).length;
-  if(stage==="hod_endorsement") return [{id:"e",label:"N+2 electronic acknowledgement",detail:data.signatures.hodDate?"Endorsement date recorded":"Enter the endorsement date",complete:!!data.signatures.hodDate}];
-  if(stage==="hr_review"||stage==="completed") return [{id:"review",label:"PDR received by HR",detail:"The appraisal workflow has reached HR",complete:true}];
-  if(stage==="manager_review") return [
+  if(stage==="hod_endorsement"&&!employeePostSubmission) return [{id:"e",label:"N+2 electronic acknowledgement",detail:data.signatures.hodDate?"Endorsement date recorded":"Enter the endorsement date",complete:!!data.signatures.hodDate}];
+  if((stage==="hr_review"||stage==="completed")&&!employeePostSubmission) return [{id:"review",label:"PDR received by HR",detail:"The appraisal workflow has reached HR",complete:true}];
+  if(stage==="manager_review"&&!employeePostSubmission) return [
     {id:"a",label:"Section A manager ratings",detail:`${completedA} of ${expectedA} applicable ratings completed`,complete:completedA===expectedA},
     {id:"b",label:"Section B manager ratings",detail:`${completedB} of ${sectionB.length} ratings completed`,complete:completedB===sectionB.length},
     {id:"d",label:"Training and development needs",detail:fullDevelopmentPlans?`${fullDevelopmentPlans} complete development plan${fullDevelopmentPlans===1?"":"s"} recorded`:"Complete at least one development plan",complete:fullDevelopmentPlans>0},
