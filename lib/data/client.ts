@@ -2,6 +2,7 @@ import { getCompanyAccess, requireTeamId, requireCompanyEditor } from "./team";
 import { createClient } from "@/lib/supabase/client";
 import { deriveStatus, type SubmissionStatus } from "./types";
 import { hasSeparateHod } from "@/lib/workflow-route";
+import { restrictPdrChanges } from "@/lib/pdr-form-data";
 
 export type StaffRecord = { id: string; employee_id: string; full_name: string; email: string | null; department: string | null; position: string | null; category: string | null; manager_email: string | null; hod_name: string | null; hod_email?: string | null; head_of_division: string | null; head_of_division_email?: string | null; is_manager: boolean; is_confirmation_staff: boolean; account_invited_at?: string | null; account_activated_at?: string | null };
 export type WorkflowStage = "employee_draft" | "returned" | "manager_review" | "hod_endorsement" | "hr_review" | "completed";
@@ -57,20 +58,6 @@ export async function savePdrForm(id: string, formData: Record<string, unknown>,
     }catch{notificationSent=false;}
   }
   return {notificationSent};
-}
-
-function restrictPdrChanges(current:Record<string,unknown>,incoming:Record<string,unknown>,role:"employee"|"manager"|"hod"|"viewer"){
-  if(role==="viewer") return current;
-  const object=(value:unknown):Record<string,unknown>=>value&&typeof value==="object"&&!Array.isArray(value)?value as Record<string,unknown>:{};
-  const basePart=object(current.particulars),nextPart=object(incoming.particulars),baseSign=object(current.signatures),nextSign=object(incoming.signatures);
-  const dateKeys=["pdrDate","kpiFrom","kpiTo"];
-  const particulars={...basePart,...Object.fromEntries(dateKeys.map(key=>[key,nextPart[key]??basePart[key]]))};
-  if(role==="hod") return {...current,particulars,signatures:{...baseSign,hodDate:nextSign.hodDate??baseSign.hodDate}};
-  const mergeRatings=(baseValue:unknown,nextValue:unknown)=>{
-    const base=Array.isArray(baseValue)?baseValue:[],next=Array.isArray(nextValue)?nextValue:[];
-    return base.map((item,index)=>{const oldRow=object(item),newRow=object(next[index]);return role==="employee"?{...oldRow,employee:newRow.employee??oldRow.employee,comments:newRow.comments??oldRow.comments}:{...oldRow,manager:newRow.manager??oldRow.manager,comments:newRow.comments??oldRow.comments};});
-  };
-  return {...current,particulars,sectionA:mergeRatings(current.sectionA,incoming.sectionA),sectionB:mergeRatings(current.sectionB,incoming.sectionB),reflection:incoming.reflection??current.reflection,nextKpis:incoming.nextKpis??current.nextKpis,training:incoming.training??current.training,signatures:{...baseSign,[role==="employee"?"employeeDate":"managerDate"]:nextSign[role==="employee"?"employeeDate":"managerDate"]??baseSign[role==="employee"?"employeeDate":"managerDate"]}};
 }
 
 export async function saveSubmission(input: { id?: string; cycleId: string; staffId: string; dueDate: string; submissionDate: string | null; rating: string | null; reviewerName: string | null; comments: string | null }) {
