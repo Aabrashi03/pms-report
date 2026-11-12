@@ -80,7 +80,7 @@ const isManagerOnlyCompetency = (group:string) => group.includes("managers only"
 function isManagerCategory(staff:StaffRecord) { return staff.category?.trim().toLowerCase()==="manager"; }
 function applicableSectionARows(staff:StaffRecord) { return sectionA.filter(([group])=>isManagerCategory(staff)||!isManagerOnlyCompetency(group)).length; }
 
-export function PdrForm({ row, cycleName = "2026 Year-End Performance and Development Review", previewStaff, accessRole }: { row?: DashboardRow; cycleName?: string; previewStaff?: StaffRecord; accessRole?: CompanyAccess["role"] }) {
+export function PdrForm({ row, cycleName = "2026 Year-End Performance and Development Review", previewStaff, accessRole, isOwnForm = false }: { row?: DashboardRow; cycleName?: string; previewStaff?: StaffRecord; accessRole?: CompanyAccess["role"]; isOwnForm?: boolean }) {
   const staff = row?.staff || previewStaff || { id:"preview",employee_id:"",full_name:"",email:null,department:null,position:null,category:null,manager_email:null,hod_name:null,head_of_division:null,is_manager:false,is_confirmation_staff:false };
   const [data,setData] = useState<PdrData>(()=>mergeData(row?.form_data));
   const [active,setActive] = useState("particulars"); const [saving,setSaving] = useState(false); const [message,setMessage] = useState(""); const [currentStage,setCurrentStage]=useState<WorkflowStage>(row?.workflow_stage||"employee_draft");
@@ -137,6 +137,8 @@ export function PdrForm({ row, cycleName = "2026 Year-End Performance and Develo
   const previousTab=tabs[activeIndex-1]; const nextTab=tabs[activeIndex+1];
   const openTab=(id:string)=>{setActive(id);window.requestAnimationFrame(()=>document.querySelector(".pdr-tabs")?.scrollIntoView({behavior:"smooth",block:"start"}));};
   const tabState=(id:string)=>{
+    const ownSubmissionComplete=isOwnForm&&!["employee_draft","returned"].includes(currentStage);
+    if(ownSubmissionComplete)return "complete";
     if(id==="review")return readyToSubmit?"complete":"needs-attention";
     if(id==="a"&&reviewUsesManagerRatings){if(reviewRatingA.complete)return "complete";if(employeeReviewRatingA.complete&&reviewRatingA.completed===0)return "pending-review";if(reviewRatingA.completed)return "in-progress";}
     if(id==="b"&&reviewUsesManagerRatings){if(reviewRatingB.complete)return "complete";if(employeeReviewRatingB.complete&&reviewRatingB.completed===0)return "pending-review";if(reviewRatingB.completed)return "in-progress";}

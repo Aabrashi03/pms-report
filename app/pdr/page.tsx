@@ -16,12 +16,13 @@ export default function PdrPage() {
   useEffect(()=>{setRequested(new URLSearchParams(window.location.search).get("submission"));Promise.all([getActiveCycleDashboard(),getCompanyAccess(),createClient().auth.getUser()]).then(([result,companyAccess,authResult])=>{setRows(result.rows);setAccess(companyAccess);setUserEmail(authResult.data.user?.email?.toLowerCase()||"");if(result.cycle?.name&&result.rows.length)setCycle(result.cycle.name);}).catch(e=>setError(e instanceof Error?e.message:"Could not load the PDR form.")).finally(()=>setLoading(false));},[]);
   const selected=requested?rows.find(row=>row.id===requested):rows.find(row=>row.staff.email?.toLowerCase()===userEmail)||(access?.role==="employee"?rows[0]:undefined);
   const formAccessRole=effectivePdrRole(access?.role,userEmail,selected?.staff.email);
+  const isOwnForm=!!userEmail&&selected?.staff.email?.trim().toLowerCase()===userEmail;
   return <AppShell title="Performance and Development Review" subtitle="SPSB year-end appraisal form">
     {loading?<div className="state-card" role="status">Loading PDR form…</div>:<>
       {error&&<p className="pdr-message">{error} A complete form preview is shown below.</p>}
       {!rows.length&&<p className="pdr-message">Form preview. HR must create and activate the 2026 cycle to assign a saveable copy to each employee.</p>}
       {rows.length>0&&!selected&&<p className="pdr-message">Your email is not matched to an employee record. Open an employee from the dashboard, or update the employee email in Employees.</p>}
-      <PdrForm row={selected} cycleName={cycle} previewStaff={previewStaff} accessRole={formAccessRole}/>
+      <PdrForm row={selected} cycleName={cycle} previewStaff={previewStaff} accessRole={formAccessRole} isOwnForm={isOwnForm}/>
     </>}
   </AppShell>;
 }
