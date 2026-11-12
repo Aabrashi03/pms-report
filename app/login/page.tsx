@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { teamsEnabled } from '@/lib/data/team';
 import { safeAuthDestination } from '@/lib/auth-redirect';
+import { passwordPolicyError } from '@/lib/password-policy';
+import { PasswordRequirements } from '@/components/password-requirements';
 import './login.css';
 
 type Mode = 'signin'|'register'|'forgot';
@@ -46,6 +48,7 @@ export default function LoginPage() {
   function switchMode(value:Mode){setMode(value);setShow(false);setPassword('');setConfirm('');setError('');setMessage('');}
   async function submit(event:React.FormEvent){
     event.preventDefault();setError('');setMessage('');
+    if(mode==='register'){const policyError=passwordPolicyError(password);if(policyError){setError(policyError);return;}}
     if(mode==='register'&&password!==confirm){setError('The passwords do not match.');return;}
     setBusy(true);
     try {
@@ -75,7 +78,7 @@ export default function LoginPage() {
     {checking?<p role="status">Checking your session…</p>:signedIn?<><p>Signed in as <strong className="login-email">{signedIn}</strong>.</p><Link className="login-primary" href={teamsEnabled?'/':'/team'}>{teamsEnabled?'Open workspace':'View access status'}</Link><button className="login-text" disabled={busy} onClick={signOut}>Sign out</button></>:<>
       <p className="login-description">{mode==='signin'?'Enter your company email and password to continue.':mode==='register'?'Use your company email to create your portal account. HR will assign access according to your role.':'Enter your company email and we will send you a secure reset link.'}</p>
       <form onSubmit={submit} className="login-form"><label>Email address<input type="email" required autoComplete="email" value={email} disabled={busy} onChange={e=>setEmail(e.target.value)} placeholder="name@selangorproperties.com.my"/></label>
-      {mode!=='forgot'&&<><label>Password<span className="login-password"><input type={show?'text':'password'} required minLength={mode==='register'?12:undefined} autoComplete={mode==='register'?'new-password':'current-password'} value={password} disabled={busy} onChange={e=>setPassword(e.target.value)}/><button type="button" aria-label={show?'Hide password':'Show password'} aria-pressed={show} onClick={()=>setShow(!show)}>{show?'Hide':'Show'}</button></span></label>{mode==='register'&&<><small>Use at least 12 characters.</small><label>Confirm password<input type="password" required minLength={12} autoComplete="new-password" value={confirm} disabled={busy} onChange={e=>setConfirm(e.target.value)}/></label></>}</>}
+      {mode!=='forgot'&&<><label>Password<span className="login-password"><input type={show?'text':'password'} required minLength={mode==='register'?8:undefined} autoComplete={mode==='register'?'new-password':'current-password'} value={password} disabled={busy} onChange={e=>setPassword(e.target.value)}/><button type="button" aria-label={show?'Hide password':'Show password'} aria-pressed={show} onClick={()=>setShow(!show)}>{show?'Hide':'Show'}</button></span></label>{mode==='register'&&<><PasswordRequirements password={password}/><label>Confirm password<input type="password" required minLength={8} autoComplete="new-password" value={confirm} disabled={busy} onChange={e=>setConfirm(e.target.value)}/></label></>}</>}
       {mode==='signin'&&<button type="button" className="login-text forgot-link" disabled={busy} onClick={()=>switchMode('forgot')}>Forgot password?</button>}
       <button className="login-primary" disabled={busy}>{busy?'Please wait…':mode==='register'?'Create account':mode==='forgot'?'Send reset link':'Sign in'}</button></form>
       <div className="login-switch">{mode==='signin'?<>First time here? <button className="login-text" disabled={busy} onClick={()=>switchMode('register')}>Create an account</button></>:<button className="login-text" disabled={busy} onClick={()=>switchMode('signin')}>Back to sign in</button>}</div>

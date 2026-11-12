@@ -65,6 +65,13 @@
 .login-card footer strong { color:#34463c; }
 .login-email { overflow-wrap:anywhere; }
 .login-form small { color:#69766e; font-size:11px; }
+.password-requirements { padding:12px 14px; border:1px solid #dce3dd; border-radius:9px; background:#f7f9f6; }
+.password-requirements strong { display:block; margin-bottom:7px; color:#34463c; font-size:11px; }
+.password-requirements ul { display:grid; gap:5px; margin:0; padding:0; list-style:none; }
+.password-requirements li { display:flex; align-items:center; gap:7px; color:#6d7771; font-size:10px; line-height:1.35; }
+.password-requirements li span { width:13px; color:#8b9690; font-weight:900; }
+.password-requirements li.is-met { color:#1d603b; }
+.password-requirements li.is-met span { color:#2d8b55; }
 .login-privacy { width:100%; max-width:480px; margin:17px 0 0; text-align:center; color:#7b857f; font-size:10px; letter-spacing:.025em; }
 .login-version { position:absolute; right:18px; bottom:12px; color:#89938d; font-size:9px; letter-spacing:.035em; white-space:nowrap; }
 .login-mobile-logo { display:none; }
