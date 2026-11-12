@@ -57,6 +57,10 @@
 .login-text { min-height:40px; padding:5px 0; border:0; background:none; color:#94131b; text-decoration:underline; text-underline-offset:3px; font-size:12px; font-weight:700; cursor:pointer; }
 .forgot-link { justify-self:end; margin-top:-11px; }
 .login-switch { display:flex; align-items:center; justify-content:center; gap:6px; margin:14px 0 0; color:#637068; font-size:12px; }
+.signin-password-requirements { margin-top:14px; padding:13px 16px; border:1px solid #e1e5df; border-radius:9px; background:#f8f9f6; color:#59665e; }
+.signin-password-requirements strong { display:block; margin-bottom:7px; color:#34463c; font-size:11px; }
+.signin-password-requirements ol { display:grid; gap:4px; margin:0; padding-left:19px; }
+.signin-password-requirements li { padding-left:2px; font-size:10px; line-height:1.4; }
 .login-notice,.login-error,.login-message { margin:18px 0 0; padding:13px 15px; border-radius:9px; font-size:12px; line-height:1.65; }
 .login-notice { border:1px solid #ead9a8; background:#fff7df; color:#72581b; }
 .login-error { border:1px solid #efcbc6; background:#fff1ef; color:#9b2c1c; }

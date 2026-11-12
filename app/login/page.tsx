@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { teamsEnabled } from '@/lib/data/team';
 import { safeAuthDestination } from '@/lib/auth-redirect';
-import { passwordPolicyError } from '@/lib/password-policy';
+import { PASSWORD_REQUIREMENTS, passwordPolicyError } from '@/lib/password-policy';
 import { PasswordRequirements } from '@/components/password-requirements';
 import './login.css';
 
@@ -82,6 +82,7 @@ export default function LoginPage() {
       {mode==='signin'&&<button type="button" className="login-text forgot-link" disabled={busy} onClick={()=>switchMode('forgot')}>Forgot password?</button>}
       <button className="login-primary" disabled={busy}>{busy?'Please wait…':mode==='register'?'Create account':mode==='forgot'?'Send reset link':'Sign in'}</button></form>
       <div className="login-switch">{mode==='signin'?<>First time here? <button className="login-text" disabled={busy} onClick={()=>switchMode('register')}>Create an account</button></>:<button className="login-text" disabled={busy} onClick={()=>switchMode('signin')}>Back to sign in</button>}</div>
+      {mode==='signin'&&<section className="signin-password-requirements" aria-label="Password requirements for new accounts"><strong>Password requirements for new accounts</strong><ol>{PASSWORD_REQUIREMENTS.map(rule=><li key={rule.id}>{rule.label}</li>)}</ol></section>}
     </>}
     {error&&<p className="login-error" role="alert">{error}</p>}{message&&<p className="login-message" role="status">{message}</p>}
     <footer><strong>Need help?</strong> Contact HR for account access or assistance.</footer></div><p className="login-privacy">© 2026 Selangor Properties Sdn Bhd. All rights reserved. For authorised internal use only. Managed by Human Resource &amp; Administration.</p><span className="login-version">PDR Portal · Version 1.0</span></section></main>;
